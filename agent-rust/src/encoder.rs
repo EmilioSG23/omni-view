@@ -7,7 +7,7 @@ use std::io::Cursor;
 /// * `width`   – frame width in pixels
 /// * `height`  – frame height in pixels
 /// * `quality` – JPEG quality (0 = worst, 100 = best)
-pub fn encode_to_jpeg(frame: &[u8], width: u32, height: u32, quality: u8) -> Vec<u8> {
+pub fn encode(frame: &[u8], width: u32, height: u32, quality: u8) -> Vec<u8> {
     // Convert BGRA → RGB (drop alpha, swap B and R channels).
     let mut rgb = Vec::with_capacity((width * height * 3) as usize);
     for pixel in frame.chunks_exact(4) {

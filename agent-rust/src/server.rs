@@ -1,5 +1,5 @@
 use crate::capture::ScreenCapturer;
-use crate::encoder::encode_to_jpeg;
+use crate::encoder::encode;
 use futures_util::{SinkExt, StreamExt};
 use std::time::Duration;
 use tokio::net::TcpListener;
@@ -9,7 +9,7 @@ use tokio_tungstenite::{accept_async, tungstenite::Message};
 pub struct Config {
     pub bind_addr: String,
     pub fps: u32,
-    pub jpeg_quality: u8,
+    pub quality: u8,
 }
 
 /// Starts the WebSocket server. Handles **one client at a time** — the server
@@ -23,7 +23,7 @@ pub async fn start_server(config: Config) {
     println!("OmniView Agent ready");
     println!("  WebSocket: ws://{}", config.bind_addr);
     println!("  FPS:       {}", config.fps);
-    println!("  Quality:   {}", config.jpeg_quality);
+    println!("  Quality:   {}", config.quality);
     println!("\n[IDLE] Waiting for client…");
 
     loop {
@@ -36,7 +36,7 @@ pub async fn start_server(config: Config) {
         };
 
         println!("[ACTIVE] Client connected from {addr}");
-        handle_client(stream, config.fps, config.jpeg_quality).await;
+        handle_client(stream, config.fps, config.quality).await;
         println!("[IDLE] Client disconnected — waiting for next connection…\n");
     }
 }
@@ -45,7 +45,7 @@ pub async fn start_server(config: Config) {
 /// - spawns a blocking capture thread that sends JPEG bytes over an mpsc channel
 /// - forwards those bytes as binary WebSocket messages
 /// - tears everything down when the client disconnects or closes the tab
-async fn handle_client(stream: tokio::net::TcpStream, fps: u32, jpeg_quality: u8) {
+async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8) {
     let ws = match accept_async(stream).await {
         Ok(ws) => ws,
         Err(e) => {
@@ -77,7 +77,7 @@ async fn handle_client(stream: tokio::net::TcpStream, fps: u32, jpeg_quality: u8
                 }
             };
 
-            let jpeg = encode_to_jpeg(&raw_frame, width, height, jpeg_quality);
+            let jpeg = encode(&raw_frame, width, height, quality);
 
             // Channel closed → client is gone, stop capturing.
             if tx.blocking_send(jpeg).is_err() {
