@@ -1,0 +1,29 @@
+{
+	"name": "@omni-view/desktop",
+	"version": "0.1.0",
+	"private": true,
+	"main": "dist/main/index.js",
+	"scripts": {
+		"dev": "tsc && electron .",
+		"build": "tsc",
+		"package": "tsc && electron-builder"
+	},
+	"dependencies": {
+		"electron": "^34.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.3",
+		"electron-builder": "^25.1.8",
+		"typescript": "^6.0.0"
+	},
+	"build": {
+		"appId": "com.omniview.desktop",
+		"productName": "OmniView",
+		"files": [
+			"dist/**/*"
+		],
+		"directories": {
+			"output": "release"
+		}
+	}
+}

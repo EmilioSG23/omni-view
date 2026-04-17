@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+dist/
+
+# Native build artifacts
+android/build/
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+ios/build/
+ios/Pods/
+ios/DerivedData/
+*.ipa
+*.apk
+*.aab

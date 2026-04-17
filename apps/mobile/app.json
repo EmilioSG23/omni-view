@@ -1,0 +1,12 @@
+{
+	"expo": {
+		"name": "OmniView",
+		"slug": "omni-view",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"scheme": "omni-view",
+		"userInterfaceStyle": "automatic",
+		"platforms": ["ios", "android", "web"],
+		"newArchEnabled": true
+	}
+}

@@ -1,0 +1,21 @@
+{
+	"name": "omni-view",
+	"version": "1.0.0",
+	"private": true,
+	"description": "See screen of any device from anywhere",
+	"main": "index.js",
+	"scripts": {
+		"dev:web": "pnpm --filter @omni-view/web dev",
+		"dev:desktop": "pnpm --filter @omni-view/desktop dev",
+		"dev:mobile": "pnpm --filter @omni-view/mobile start",
+		"dev:backend": "pnpm --filter @omni-view/backend dev",
+		"dev:agent": "pnpm --filter @omni-view/agent dev",
+		"dev:shared": "pnpm --filter @omni-view/shared dev",
+		"build:web": "pnpm --filter @omni-view/web build",
+		"build:desktop": "pnpm --filter @omni-view/desktop build",
+		"build:mobile": "pnpm --filter @omni-view/mobile build",
+		"build:backend": "pnpm --filter @omni-view/backend build",
+		"build:agent": "pnpm --filter @omni-view/agent build"
+	},
+	"packageManager": "pnpm@10.33.0"
+}
