@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>OmniView</title>
+		<style>
+			*,
+			*::before,
+			*::after {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				background: #0d0d0d;
+				color: #e0e0e0;
+				font-family: "Courier New", Courier, monospace;
+				height: 100dvh;
+				display: flex;
+				flex-direction: column;
+				overflow: hidden;
+			}
+
+			/* ── toolbar ─────────────────────────────────────────────── */
+			#toolbar {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 8px 16px;
+				background: #111;
+				border-bottom: 1px solid #222;
+				flex-shrink: 0;
+				flex-wrap: wrap;
+			}
+
+			#toolbar h1 {
+				font-size: 0.85rem;
+				letter-spacing: 0.15em;
+				color: #5b9bd5;
+				white-space: nowrap;
+			}
+
+			.badge {
+				font-size: 0.7rem;
+				padding: 2px 8px;
+				border-radius: 3px;
+				border: 1px solid currentColor;
+				white-space: nowrap;
+			}
+			.badge.idle {
+				color: #888;
+			}
+			.badge.connecting {
+				color: #f0a500;
+			}
+			.badge.connected {
+				color: #4caf50;
+			}
+			.badge.error {
+				color: #e53935;
+			}
+
+			.url-wrap {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				flex: 1;
+				min-width: 220px;
+			}
+			.url-wrap label {
+				font-size: 0.7rem;
+				color: #666;
+				white-space: nowrap;
+			}
+
+			#ws-url {
+				flex: 1;
+				background: #1a1a1a;
+				color: #e0e0e0;
+				border: 1px solid #333;
+				border-radius: 4px;
+				padding: 4px 8px;
+				font-family: inherit;
+				font-size: 0.8rem;
+			}
+			#ws-url:focus {
+				outline: none;
+				border-color: #5b9bd5;
+			}
+
+			button {
+				padding: 4px 14px;
+				border-radius: 4px;
+				border: 1px solid #444;
+				background: #1e1e1e;
+				color: #e0e0e0;
+				cursor: pointer;
+				font-size: 0.8rem;
+				font-family: inherit;
+				white-space: nowrap;
+				transition: background 0.15s;
+			}
+			button:hover:not(:disabled) {
+				background: #2a2a2a;
+			}
+			button:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			#fps-display {
+				font-size: 0.7rem;
+				color: #555;
+				white-space: nowrap;
+				min-width: 55px;
+				text-align: right;
+			}
+
+			/* ── screen area ─────────────────────────────────────────── */
+			#screen-area {
+				flex: 1;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				overflow: auto;
+				background: #0d0d0d;
+			}
+
+			#screen {
+				max-width: 100%;
+				max-height: 100%;
+				display: block;
+			}
+
+			#placeholder {
+				text-align: center;
+				color: #333;
+				user-select: none;
+			}
+			#placeholder .icon {
+				font-size: 4rem;
+				line-height: 1;
+			}
+			#placeholder p {
+				margin-top: 10px;
+				font-size: 0.8rem;
+				line-height: 1.7;
+			}
+			#placeholder strong {
+				color: #555;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="toolbar">
+			<h1>⬛ OMNIVIEW</h1>
+			<span id="status" class="badge idle">IDLE</span>
+
+			<div class="url-wrap">
+				<label for="ws-url">ws://</label>
+				<input
+					type="text"
+					id="ws-url"
+					value="localhost:9001"
+					spellcheck="false"
+					autocomplete="off"
+				/>
+			</div>
+
+			<button id="btn-connect">Connect</button>
+			<button id="btn-disconnect" disabled>Disconnect</button>
+			<span id="fps-display"></span>
+		</div>
+
+		<div id="screen-area">
+			<img id="screen" alt="Remote screen" style="display: none" />
+			<div id="placeholder">
+				<div class="icon">🖥️</div>
+				<p>
+					Start <strong>omniview-agent</strong> on your PC,<br />
+					enter its address and click <strong>Connect</strong>.
+				</p>
+			</div>
+		</div>
+
+		<script src="app.js"></script>
+	</body>
+</html>
