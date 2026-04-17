@@ -1,7 +1,5 @@
-use crate::capture::ScreenCapturer;
-use crate::encoder::encode;
+use crate::encoders::{run_capture_loop, EncoderConfig};
 use futures_util::{SinkExt, StreamExt};
-use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
@@ -10,6 +8,7 @@ pub struct Config {
     pub bind_addr: String,
     pub fps: u32,
     pub quality: u8,
+    pub encoder: String,
 }
 
 /// Starts the WebSocket server. Handles **one client at a time** — the server
@@ -24,6 +23,7 @@ pub async fn start_server(config: Config) {
     println!("  WebSocket: ws://{}", config.bind_addr);
     println!("  FPS:       {}", config.fps);
     println!("  Quality:   {}", config.quality);
+		println!("  Encoder:   {}", config.encoder);
     println!("\n[IDLE] Waiting for client…");
 
     loop {
@@ -36,16 +36,15 @@ pub async fn start_server(config: Config) {
         };
 
         println!("[ACTIVE] Client connected from {addr}");
-        handle_client(stream, config.fps, config.quality).await;
+        handle_client(stream, config.fps, config.quality, config.encoder.clone()).await;
         println!("[IDLE] Client disconnected — waiting for next connection…\n");
     }
 }
 
-/// Manages a single WebSocket client session:
-/// - spawns a blocking capture thread that sends JPEG bytes over an mpsc channel
-/// - forwards those bytes as binary WebSocket messages
-/// - tears everything down when the client disconnects or closes the tab
-async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8) {
+/// Manages a single WebSocket client session.
+/// Spawns a blocking capture+encode thread and forwards its output as binary
+/// WebSocket messages until the client disconnects.
+async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8, encoder: String) {
     let ws = match accept_async(stream).await {
         Ok(ws) => ws,
         Err(e) => {
@@ -55,52 +54,24 @@ async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8) {
     };
     let (mut sender, mut receiver) = ws.split();
 
-    let frame_interval = Duration::from_secs_f64(1.0 / fps as f64);
-
-    // Bounded channel (depth=2) provides natural back-pressure: the capture
-    // thread blocks when the network hasn't drained the previous frame yet.
+    // Bounded channel (depth=2) provides natural back-pressure.
     let (tx, mut rx) = mpsc::channel::<Vec<u8>>(2);
 
-    // Capture runs on a dedicated blocking thread (scrap is not async).
+    // All capture/encode logic lives in the encoders module; server.rs knows
+    // nothing about specific codecs.
     let capture_handle = tokio::task::spawn_blocking(move || {
-        let mut capturer = ScreenCapturer::new();
-        let (width, height) = (capturer.width, capturer.height);
-
-        loop {
-            let tick = std::time::Instant::now();
-
-            // Spin-wait until the display driver delivers a new frame.
-            let raw_frame = loop {
-                match capturer.try_capture() {
-                    Some(f) => break f,
-                    None => std::thread::sleep(Duration::from_millis(1)),
-                }
-            };
-
-            let jpeg = encode(&raw_frame, width, height, quality);
-
-            // Channel closed → client is gone, stop capturing.
-            if tx.blocking_send(jpeg).is_err() {
-                break;
-            }
-
-            // Sleep the remainder of the frame interval to maintain target FPS.
-            let elapsed = tick.elapsed();
-            if elapsed < frame_interval {
-                std::thread::sleep(frame_interval - elapsed);
-            }
-        }
+        run_capture_loop(EncoderConfig { encoder, fps, quality }, tx);
     });
 
     // Drive the WebSocket: forward frames from the capture thread and react to
     // any control messages (Close, errors) from the client.
     loop {
         tokio::select! {
-            // A new JPEG frame is ready — send it.
+            // A new encoded frame is ready — send it.
             frame = rx.recv() => {
                 match frame {
-                    Some(jpeg) => {
-                        if sender.send(Message::Binary(jpeg)).await.is_err() {
+                    Some(encoded) => {
+                        if sender.send(Message::Binary(encoded)).await.is_err() {
                             break;
                         }
                     }

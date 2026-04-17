@@ -6,3 +6,4 @@ build/*
 .requirements/
 
 target/*
+mvp/*
