@@ -1,0 +1,13 @@
+[package]
+name = "omniview-agent"
+version = "0.1.0"
+edition = "2021"
+description = "OmniView Phase 1 — on-demand screen streaming agent"
+
+[dependencies]
+scrap         = "0.5"
+image         = "0.24"
+tokio         = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.20"
+futures-util  = "0.3"
+clap          = { version = "4", features = ["derive"] }
