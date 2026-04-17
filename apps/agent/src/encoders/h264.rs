@@ -89,8 +89,6 @@ impl H264StreamEncoder {
             // Fragmented MP4 with empty init segment — required for MSE
             "-f", "mp4",
             "-movflags", "frag_keyframe+empty_moov+default_base_moof",
-            // Flush each fragment to stdout immediately → lower latency
-            "-flush_packets", "1",
             "pipe:1",
         ]);
 

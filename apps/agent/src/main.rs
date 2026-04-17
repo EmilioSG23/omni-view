@@ -30,7 +30,7 @@ struct Cli {
 	/// Note: h264 is significantly more CPU-intensive than the others, but results in much smaller
 	/// payloads and smoother video. Requires ffmpeg — resolved automatically from the bundled
 	/// vendor directory or the system PATH. Falls back to jpeg if ffmpeg is unavailable.
-	#[arg(long, default_value = "webp")]
+	#[arg(long, default_value = "h264")]
 	encoder: String,
 }
 
