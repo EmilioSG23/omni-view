@@ -2,6 +2,7 @@ mod capture;
 mod consts;
 mod encoders;
 mod server;
+mod services;
 
 use clap::Parser;
 use consts::{
