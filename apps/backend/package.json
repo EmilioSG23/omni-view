@@ -10,16 +10,28 @@
 	},
 	"dependencies": {
 		"@nestjs/common": "^11.0.0",
+		"@nestjs/config": "^3.3.0",
 		"@nestjs/core": "^11.0.0",
 		"@nestjs/platform-express": "^11.0.0",
+		"@nestjs/platform-ws": "^11.0.0",
+		"@nestjs/typeorm": "^11.0.0",
+		"@nestjs/websockets": "^11.0.0",
+		"@omni-view/shared": "workspace:*",
+		"better-sqlite3": "^11.0.0",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.14.1",
 		"reflect-metadata": "^0.2.2",
-		"rxjs": "^7.8.2"
+		"rxjs": "^7.8.2",
+		"typeorm": "^0.3.20",
+		"ws": "^8.18.0"
 	},
 	"devDependencies": {
 		"@nestjs/cli": "^11.0.0",
 		"@nestjs/schematics": "^11.0.0",
+		"@types/better-sqlite3": "^7.6.8",
 		"@types/express": "^5.0.0",
 		"@types/node": "^22.15.3",
+		"@types/ws": "^8.5.10",
 		"typescript": "^6.0.0"
 	}
 }
