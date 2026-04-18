@@ -6,7 +6,30 @@
 		"build": "nest build",
 		"dev": "nest start --watch",
 		"start": "nest start",
-		"start:prod": "node dist/main"
+		"start:prod": "node dist/main",
+		"test": "jest --passWithNoTests",
+		"test:watch": "jest --watch",
+		"test:cov": "jest --coverage"
+	},
+	"jest": {
+		"moduleFileExtensions": ["js", "json", "ts"],
+		"rootDir": "src",
+		"testMatch": ["**/*.spec.ts"],
+		"transform": {
+			"^.+\\.(t|j)s$": ["ts-jest", {
+				"tsconfig": {
+					"module": "CommonJS",
+					"esModuleInterop": true,
+					"types": ["jest", "node"]
+				}
+			}]
+		},
+		"collectCoverageFrom": ["**/*.(t|j)s"],
+		"coverageDirectory": "../coverage",
+		"testEnvironment": "node",
+		"moduleNameMapper": {
+			"^@omni-view/shared$": "<rootDir>/../../packages/shared/src/index.ts"
+		}
 	},
 	"dependencies": {
 		"@nestjs/common": "^11.0.0",
@@ -28,10 +51,14 @@
 	"devDependencies": {
 		"@nestjs/cli": "^11.0.0",
 		"@nestjs/schematics": "^11.0.0",
+		"@nestjs/testing": "^11.0.0",
 		"@types/better-sqlite3": "^7.6.8",
 		"@types/express": "^5.0.0",
+		"@types/jest": "^29.5.14",
 		"@types/node": "^22.15.3",
 		"@types/ws": "^8.5.10",
+		"jest": "^29.7.0",
+		"ts-jest": "^29.3.2",
 		"typescript": "^6.0.0"
 	}
 }
