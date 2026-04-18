@@ -5,6 +5,7 @@ pub use interface::{Encoder, EncoderConfig, StreamEvent};
 
 use crate::capture::{CaptureResult, ScreenCapturer};
 use crate::consts::SessionControl;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
@@ -14,7 +15,9 @@ pub fn run_capture_loop(
     session: SessionControl,
 ) {
     let mut capturer = ScreenCapturer::new();
-    let interval = Duration::from_secs_f64(1.0 / config.fps as f64);
+
+    let mut current_fps = config.fps.load(Ordering::Relaxed);
+    let mut interval = Duration::from_secs_f64(1.0 / current_fps as f64);
 
     let mut encoder = match build_encoder(&config, capturer.width, capturer.height, tx.clone()) {
         Some(e) => e,
@@ -26,7 +29,7 @@ pub fn run_capture_loop(
 
     let mut next_tick = Instant::now() + interval;
     loop {
-        if session.is_paused() {
+        if !session.should_capture() {
             if tx.is_closed() {
                 break;
             }
@@ -35,10 +38,18 @@ pub fn run_capture_loop(
             continue;
         }
 
+        // Recalculate interval if fps changed dynamically.
+        let new_fps = config.fps.load(Ordering::Relaxed);
+        if new_fps != current_fps {
+            current_fps = new_fps;
+            interval = Duration::from_secs_f64(1.0 / current_fps as f64);
+            next_tick = Instant::now() + interval;
+        }
+
         match poll_capture(&mut capturer) {
             CaptureResult::Frame(frame) => {
                 if !encoder.write_frame(&frame) {
-                    break; // client disconnected
+                    break; // all clients disconnected
                 }
             }
             CaptureResult::Reinit => {
@@ -77,11 +88,14 @@ fn build_encoder(
     h: u32,
     tx: mpsc::Sender<StreamEvent>,
 ) -> Option<Box<dyn Encoder>> {
+    let fps = config.fps.load(Ordering::Relaxed);
+    let quality = config.quality.load(Ordering::Relaxed);
     match config.encoder.to_lowercase().as_str() {
-        "h264" => h264::H264StreamEncoder::start(w, h, config.fps, config.quality, tx)
+        "h264" => h264::H264StreamEncoder::start(w, h, fps, quality, tx)
             .map(|e| Box::new(e) as Box<dyn Encoder>),
         fmt => Some(
-            Box::new(img::ImageEncoder::new(w, h, config.quality, fmt, tx)) as Box<dyn Encoder>,
+            Box::new(img::ImageEncoder::new(w, h, config.quality.clone(), fmt, tx))
+                as Box<dyn Encoder>,
         ),
     }
 }
