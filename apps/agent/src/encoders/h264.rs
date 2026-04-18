@@ -5,9 +5,20 @@ use std::sync::OnceLock;
 use std::thread;
 use tokio::sync::mpsc;
 
-// ── ffmpeg binary resolution ──────────────────────────────────────────────────
-
 static FFMPEG_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+// ── H264StreamEncoder ────────────────────────────────────────────────────────
+// — Encodes a stream of raw BGRA frames to fragmented MP4 / H.264 using ffmpeg.
+impl super::Encoder for H264StreamEncoder {
+    /// Write one raw BGRA frame into the encoder.
+    /// Returns `false` if the stdin pipe is broken (ffmpeg has exited).
+    fn write_frame(&mut self, frame: &[u8]) -> bool {
+        match self.stdin.as_mut() {
+            Some(s) => s.write_all(frame).is_ok(),
+            None => false,
+        }
+    }
+}
 
 /// Returns the cached path to the ffmpeg binary, resolved once on first call.
 ///
@@ -30,8 +41,6 @@ pub(super) fn ffmpeg_path() -> &'static PathBuf {
         PathBuf::from("ffmpeg")
     })
 }
-
-// ── H264StreamEncoder ─────────────────────────────────────────────────────────
 
 /// A persistent ffmpeg process that encodes a continuous stream of raw BGRA
 /// frames into fragmented MP4 / H.264.
@@ -129,14 +138,6 @@ impl H264StreamEncoder {
         Some(Self { stdin: Some(stdin), child })
     }
 
-    /// Write one raw BGRA frame into the encoder.
-    /// Returns `false` if the stdin pipe is broken (ffmpeg has exited).
-    pub fn write_frame(&mut self, frame: &[u8]) -> bool {
-        match self.stdin.as_mut() {
-            Some(s) => s.write_all(frame).is_ok(),
-            None => false,
-        }
-    }
 }
 
 impl Drop for H264StreamEncoder {

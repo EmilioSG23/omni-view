@@ -1,5 +1,35 @@
 use image::{DynamicImage, ImageBuffer, ImageOutputFormat, Rgb};
 use std::io::Cursor;
+use tokio::sync::mpsc;
+
+/// An encoder that compresses each BGRA frame to an image format (JPEG, PNG,
+/// WebP, …) and forwards the resulting bytes to `tx`.
+pub struct ImageEncoder {
+    tx: mpsc::Sender<Vec<u8>>,
+    width: u32,
+    height: u32,
+    quality: u8,
+    format: String,
+}
+
+impl ImageEncoder {
+    pub fn new(
+        width: u32,
+        height: u32,
+        quality: u8,
+        format: &str,
+        tx: mpsc::Sender<Vec<u8>>,
+    ) -> Self {
+        Self { tx, width, height, quality, format: format.to_owned() }
+    }
+}
+
+impl super::Encoder for ImageEncoder {
+    fn write_frame(&mut self, frame: &[u8]) -> bool {
+        let encoded = encode(frame, self.width, self.height, self.quality, &self.format);
+        self.tx.blocking_send(encoded).is_ok()
+    }
+}
 
 /// Encodes a single raw BGRA frame to the named image format.
 /// Supported names: `jpeg`/`jpg`, `png`, `webp`, `gif`, `tiff`, `bmp`.
