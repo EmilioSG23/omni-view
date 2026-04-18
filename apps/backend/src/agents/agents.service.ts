@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import logger from "../common/custom-logger.service";
 import { AgentEntity } from "./agent.entity";
 import { AddToWhitelistDto, RegisterAgentDto } from "./agents.dto";
 import { WhitelistEntity } from "./whitelist.entity";
@@ -16,15 +17,14 @@ export class AgentsService {
 
 	/** Register a new agent or update an existing one's metadata. */
 	async register(dto: RegisterAgentDto): Promise<AgentEntity> {
-		const existing = await this.agents.findOne({
-			where: { agent_id: dto.agent_id },
-		});
+		logger.info(`Registering agent ${dto.agent_id} (version ${dto.version})`, "AgentsService");
+		const existing = await this.agents.findOne({ where: { agent_id: dto.agent_id } });
 
 		if (existing) {
 			existing.version = dto.version;
-			if (dto.label !== undefined) {
-				existing.label = dto.label ?? null;
-			}
+			if (dto.label !== undefined) existing.label = dto.label ?? null;
+			if (dto.ws_url !== undefined) existing.ws_url = dto.ws_url ?? null;
+			if (dto.password_hash !== undefined) existing.password_hash = dto.password_hash ?? null;
 			return this.agents.save(existing);
 		}
 
@@ -32,8 +32,23 @@ export class AgentsService {
 			agent_id: dto.agent_id,
 			label: dto.label ?? null,
 			version: dto.version,
+			ws_url: dto.ws_url ?? null,
+			password_hash: dto.password_hash ?? null,
 		});
+		logger.info(`Agent ${dto.agent_id} registered`, "AgentsService");
 		return this.agents.save(entity);
+	}
+
+	/** Return the WebSocket URL and password hash for backend-pull mode. */
+	async getConnectionInfo(agentId: string): Promise<{ ws_url: string; password_hash: string }> {
+		const agent = await this.findOne(agentId);
+		if (!agent.ws_url) {
+			throw new NotFoundException(`Agent ${agentId} has no registered ws_url`);
+		}
+		if (!agent.password_hash) {
+			throw new NotFoundException(`Agent ${agentId} has no registered password_hash`);
+		}
+		return { ws_url: agent.ws_url, password_hash: agent.password_hash };
 	}
 
 	/** Update the last_seen_at timestamp for an agent. */
@@ -42,6 +57,7 @@ export class AgentsService {
 		if (!agent) throw new NotFoundException(`Agent ${agentId} not found`);
 		// UpdateDateColumn updates automatically on save
 		await this.agents.save(agent);
+		logger.info(`Heartbeat received from agent ${agentId}`, "AgentsService.heartbeat");
 	}
 
 	findAll(): Promise<AgentEntity[]> {

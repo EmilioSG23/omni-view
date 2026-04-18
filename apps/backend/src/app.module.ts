@@ -7,6 +7,8 @@ import { WhitelistEntity } from "./agents/whitelist.entity";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import configuration from "./config/configuration";
+import { FrameEntity } from "./frames/frame.entity";
+import { FramesModule } from "./frames/frames.module";
 import { WsModule } from "./ws/ws.module";
 
 @Module({
@@ -15,11 +17,12 @@ import { WsModule } from "./ws/ws.module";
 		TypeOrmModule.forRoot({
 			type: "better-sqlite3",
 			database: process.env.DB_PATH ?? "omniview.db",
-			entities: [AgentEntity, WhitelistEntity],
+			entities: [AgentEntity, WhitelistEntity, FrameEntity],
 			// synchronize is safe for development/MVP. Disable in production.
 			synchronize: true,
 		}),
 		AgentsModule,
+		FramesModule,
 		WsModule,
 	],
 	controllers: [AppController],
