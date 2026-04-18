@@ -1,7 +1,7 @@
 ﻿use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::thread;
 use tokio::sync::mpsc;
 
@@ -130,7 +130,7 @@ impl H264StreamEncoder {
                 match reader.read(&mut buf) {
                     Ok(0) => break,
                     Ok(n) => {
-                        let data = StreamEvent::Frame(buf[..n].to_vec());
+                        let data = StreamEvent::Frame(Arc::new(buf[..n].to_vec()));
                         if is_init {
                             is_init = false;
                             if tx_pump.blocking_send(data).is_err() {

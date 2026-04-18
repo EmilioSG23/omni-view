@@ -11,7 +11,7 @@ use consts::{
 use server::Config;
 
 #[derive(Parser)]
-#[command(name = "omniview-agent", version, about)]
+#[command(name = "omniview-agent", version, about = "OmniView screen-sharing agent (local mode)")]
 struct Cli {
     #[arg(long, default_value = DEFAULT_BIND_ADDR)]
     bind: String,
@@ -38,3 +38,4 @@ async fn main() {
     })
     .await;
 }
+
