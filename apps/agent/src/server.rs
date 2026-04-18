@@ -237,3 +237,113 @@ fn handle_control_message(
         _ => {}
     }
 }
+
+// ---------------------------------------------------------------------------
+// Unit tests for handle_control_message — kept inline because the function is private
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::SocketAddr;
+    use std::str::FromStr;
+    use std::sync::{
+        atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering},
+        Arc,
+    };
+
+    fn test_addr() -> SocketAddr {
+        SocketAddr::from_str("127.0.0.1:9999").unwrap()
+    }
+
+    fn make_atomics() -> (Arc<AtomicBool>, Arc<AtomicU32>, Arc<AtomicU8>) {
+        (
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU32::new(10)),
+            Arc::new(AtomicU8::new(60)),
+        )
+    }
+
+    #[test]
+    fn handle_control_message_pause_sets_paused() {
+        let (paused, fps, quality) = make_atomics();
+        let msg = r#"{"type":"pause"}"#;
+        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        assert!(paused.load(Ordering::Relaxed), "paused should be true after pause message");
+    }
+
+    #[test]
+    fn handle_control_message_resume_clears_paused() {
+        let (paused, fps, quality) = make_atomics();
+        paused.store(true, Ordering::Relaxed);
+        let msg = r#"{"type":"resume"}"#;
+        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        assert!(!paused.load(Ordering::Relaxed), "paused should be false after resume message");
+    }
+
+    #[test]
+    fn handle_control_message_config_performance_preset() {
+        let (paused, fps, quality) = make_atomics();
+        let msg = r#"{"type":"config","preset":"performance"}"#;
+        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        assert_eq!(fps.load(Ordering::Relaxed), 5);
+        assert_eq!(quality.load(Ordering::Relaxed), 40);
+    }
+
+    #[test]
+    fn handle_control_message_config_quality_preset() {
+        let (paused, fps, quality) = make_atomics();
+        let msg = r#"{"type":"config","preset":"quality"}"#;
+        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        assert_eq!(fps.load(Ordering::Relaxed), 15);
+        assert_eq!(quality.load(Ordering::Relaxed), 80);
+    }
+
+    #[test]
+    fn handle_control_message_config_balanced_preset() {
+        let (paused, fps, quality) = make_atomics();
+        let msg = r#"{"type":"config","preset":"balanced"}"#;
+        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        assert_eq!(fps.load(Ordering::Relaxed), 10);
+        assert_eq!(quality.load(Ordering::Relaxed), 60);
+    }
+
+    #[test]
+    fn handle_control_message_config_custom_values() {
+        let (paused, fps, quality) = make_atomics();
+        let msg = r#"{"type":"config","preset":"custom","custom":{"fps":20,"quality":75}}"#;
+        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        assert_eq!(fps.load(Ordering::Relaxed), 20);
+        assert_eq!(quality.load(Ordering::Relaxed), 75);
+    }
+
+    #[test]
+    fn handle_control_message_config_custom_values_are_clamped() {
+        let (paused, fps, quality) = make_atomics();
+        // fps=999 → clamped to 30, quality=0 → clamped to 1
+        let msg = r#"{"type":"config","preset":"custom","custom":{"fps":999,"quality":0}}"#;
+        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        assert_eq!(fps.load(Ordering::Relaxed), 30, "fps should be clamped to 30");
+        assert_eq!(quality.load(Ordering::Relaxed), 1, "quality should be clamped to 1");
+    }
+
+    #[test]
+    fn handle_control_message_invalid_json_is_ignored() {
+        let (paused, fps, quality) = make_atomics();
+        // Should not panic on invalid JSON
+        handle_control_message("not json {{{{", &paused, &fps, &quality, &test_addr());
+        // State unchanged
+        assert!(!paused.load(Ordering::Relaxed));
+        assert_eq!(fps.load(Ordering::Relaxed), 10);
+        assert_eq!(quality.load(Ordering::Relaxed), 60);
+    }
+
+    #[test]
+    fn handle_control_message_unknown_type_is_ignored() {
+        let (paused, fps, quality) = make_atomics();
+        handle_control_message(r#"{"type":"unknown_op"}"#, &paused, &fps, &quality, &test_addr());
+        assert!(!paused.load(Ordering::Relaxed));
+        assert_eq!(fps.load(Ordering::Relaxed), 10);
+        assert_eq!(quality.load(Ordering::Relaxed), 60);
+    }
+}
+

@@ -4,6 +4,14 @@ version = "0.1.0"
 edition = "2021"
 description = "OmniView — on-demand screen streaming agent"
 
+[lib]
+name = "omniview_agent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "omniview-agent"
+path = "src/main.rs"
+
 [dependencies]
 scrap         = "0.5"
 image         = "0.24"
@@ -17,3 +25,6 @@ sha2          = "0.10"
 hex           = "0.4"
 uuid          = { version = "1", features = ["v4"] }
 reqwest       = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

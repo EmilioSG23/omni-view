@@ -59,3 +59,4 @@ impl SessionControl {
         self.get() == SessionState::Streaming
     }
 }
+

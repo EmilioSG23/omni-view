@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, OnceLock};
@@ -101,8 +102,7 @@ pub(crate) fn spawn_ffmpeg(
     Some((child, stdin, stdout))
 }
 
-pub(crate) fn run_stdout_pump(stdout: ChildStdout, tx: mpsc::Sender<StreamEvent>) {
-    use std::io::Read;
+pub(crate) fn run_stdout_pump(stdout: impl Read + Send + 'static, tx: mpsc::Sender<StreamEvent>) {
     let mut reader = stdout;
     let mut buf = vec![0u8; 131_072];
 
@@ -145,7 +145,7 @@ fn send_frame(tx: &mpsc::Sender<StreamEvent>, data: &[u8]) {
     }
 }
 
-fn find_box(buf: &[u8], fourcc: &[u8; 4]) -> Option<usize> {
+pub(crate) fn find_box(buf: &[u8], fourcc: &[u8; 4]) -> Option<usize> {
     let mut pos = 0usize;
     while pos + 8 <= buf.len() {
         let size =
@@ -160,3 +160,94 @@ fn find_box(buf: &[u8], fourcc: &[u8; 4]) -> Option<usize> {
     }
     None
 }
+
+// ---------------------------------------------------------------------------
+// Unit tests — kept inline because find_box and run_stdout_pump are pub(crate)
+// and therefore invisible to crates in tests/
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use std::thread;
+
+    /// Build a minimal 8-byte MP4 box header: 4-byte big-endian size + 4-byte fourcc.
+    fn box_header(size: u32, fourcc: &[u8; 4]) -> Vec<u8> {
+        let mut v = size.to_be_bytes().to_vec();
+        v.extend_from_slice(fourcc);
+        v
+    }
+
+    /// Minimal fMP4 stream: ftyp box (24 bytes) + moof header + payload.
+    fn fake_fmp4() -> Vec<u8> {
+        let mut data = box_header(24, b"ftyp");
+        data.extend_from_slice(&[0u8; 16]); // pad to declared size=24
+        data.extend(box_header(16, b"moof"));
+        data.extend_from_slice(&[0xAB, 0xCD, 0xEF, 0x00, 0x11, 0x22, 0x33, 0x44]);
+        data
+    }
+
+    #[test]
+    fn find_box_detects_moof_at_offset_zero() {
+        let buf = box_header(16, b"moof");
+        assert_eq!(find_box(&buf, b"moof"), Some(0));
+    }
+
+    #[test]
+    fn find_box_detects_moof_after_ftyp() {
+        let mut buf = box_header(24, b"ftyp");
+        buf.extend_from_slice(&[0u8; 16]);
+        buf.extend(box_header(16, b"moof"));
+        assert_eq!(find_box(&buf, b"moof"), Some(24));
+    }
+
+    #[test]
+    fn find_box_returns_none_when_fourcc_absent() {
+        let buf = box_header(16, b"ftyp");
+        assert_eq!(find_box(&buf, b"moof"), None);
+    }
+
+    #[test]
+    fn find_box_returns_none_on_empty_input() {
+        assert_eq!(find_box(&[], b"moof"), None);
+    }
+
+    #[test]
+    fn find_box_breaks_on_size_less_than_8() {
+        // size=4 is invalid; the loop must break before reaching "moof"
+        let mut full = [0u8, 0, 0, 4, b'f', b't', b'y', b'p'].to_vec();
+        full.extend(box_header(8, b"moof"));
+        assert_eq!(find_box(&full, b"moof"), None);
+    }
+
+    #[test]
+    fn run_stdout_pump_emits_init_then_frame() {
+        let (tx, mut rx) = mpsc::channel::<StreamEvent>(32);
+        thread::spawn(move || run_stdout_pump(Cursor::new(fake_fmp4()), tx));
+
+        // First event must be Init containing the bytes before moof (the ftyp box, 24 bytes)
+        let first = rx.blocking_recv().expect("expected Init event");
+        assert!(matches!(first, StreamEvent::Init(_)), "Expected Init, got {:?}", first);
+        if let StreamEvent::Init(ref data) = first {
+            assert_eq!(data.len(), 24, "Init payload should be the ftyp box (24 bytes)");
+        }
+    }
+
+    #[test]
+    fn run_stdout_pump_handles_empty_reader() {
+        let (tx, mut rx) = mpsc::channel::<StreamEvent>(4);
+        thread::spawn(move || run_stdout_pump(Cursor::new(vec![]), tx));
+        assert!(rx.blocking_recv().is_none(), "No events expected from empty reader");
+    }
+
+    #[test]
+    fn run_stdout_pump_no_init_when_moof_absent() {
+        // Bytes with no moof box — pump drains the reader and closes tx without emitting Init
+        let mut data = box_header(16, b"ftyp");
+        data.extend_from_slice(&[0u8; 8]);
+        let (tx, mut rx) = mpsc::channel::<StreamEvent>(4);
+        thread::spawn(move || run_stdout_pump(Cursor::new(data), tx));
+        assert!(rx.blocking_recv().is_none(), "No Init when moof is absent");
+    }
+}
+

@@ -1,5 +1,5 @@
 mod h264;
-mod img;
+pub mod img;
 mod interface;
 pub use interface::{Encoder, EncoderConfig, StreamEvent};
 

@@ -8,6 +8,14 @@ pub enum CaptureResult {
     Reinit,
 }
 
+/// Abstraction over screen capture so that tests can inject a fake capturer
+/// without requiring a real display or OS-level screen-capture permissions.
+pub trait CapturerTrait {
+    fn try_capture(&mut self) -> CaptureResult;
+    fn width(&self) -> u32;
+    fn height(&self) -> u32;
+}
+
 pub struct ScreenCapturer {
     capturer: Capturer,
     pub width: u32,
@@ -43,6 +51,23 @@ impl ScreenCapturer {
         }
     }
 
+}
+
+impl CapturerTrait for ScreenCapturer {
+    fn try_capture(&mut self) -> CaptureResult {
+        self.try_capture()
+    }
+
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
+    }
+}
+
+impl ScreenCapturer {
     fn reinit(&mut self) {
         std::thread::sleep(Duration::from_millis(150));
         loop {

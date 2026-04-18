@@ -1,14 +1,10 @@
-mod services;
-mod capture;
-mod config;
-mod consts;
-mod encoders;
-mod server;
+use omniview_agent::config::AgentConfig;
+use omniview_agent::config::interface::Config as ServerConfig;
+use omniview_agent::consts::{DEFAULT_BIND_ADDR, DEFAULT_FPS, DEFAULT_QUALITY, MAX_FPS, MAX_QUALITY, MIN_FPS, MIN_QUALITY};
+use omniview_agent::services;
+use omniview_agent::server;
 
 use clap::Parser;
-use config::AgentConfig;
-use consts::{DEFAULT_BIND_ADDR, DEFAULT_FPS, DEFAULT_QUALITY, MAX_FPS, MAX_QUALITY, MIN_FPS, MIN_QUALITY};
-use config::interface::Config as ServerConfig;
 use tokio::time::Duration;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
