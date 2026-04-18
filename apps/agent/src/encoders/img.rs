@@ -12,7 +12,6 @@ pub struct ImageEncoder {
     tx: mpsc::Sender<StreamEvent>,
     width: u32,
     height: u32,
-    /// Dynamic quality — read on every frame write.
     quality: Arc<AtomicU8>,
     format: String,
 }

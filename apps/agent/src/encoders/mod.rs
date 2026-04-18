@@ -93,10 +93,13 @@ fn build_encoder(
     match config.encoder.to_lowercase().as_str() {
         "h264" => h264::H264StreamEncoder::start(w, h, fps, quality, tx)
             .map(|e| Box::new(e) as Box<dyn Encoder>),
-        fmt => Some(
-            Box::new(img::ImageEncoder::new(w, h, config.quality.clone(), fmt, tx))
-                as Box<dyn Encoder>,
-        ),
+        fmt => Some(Box::new(img::ImageEncoder::new(
+            w,
+            h,
+            config.quality.clone(),
+            fmt,
+            tx,
+        )) as Box<dyn Encoder>),
     }
 }
 

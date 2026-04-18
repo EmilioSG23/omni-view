@@ -1,3 +1,7 @@
 target/
 cargo.lock
 vendor/
+
+.cargo/
+diag.mjs
+diag_tmp/

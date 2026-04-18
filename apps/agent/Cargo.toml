@@ -2,7 +2,7 @@
 name = "omniview-agent"
 version = "0.1.0"
 edition = "2021"
-description = "OmniView Phase 1+2 — on-demand screen streaming agent"
+description = "OmniView Phase 1 — on-demand screen streaming agent"
 
 [dependencies]
 scrap         = "0.5"
@@ -11,9 +11,4 @@ tokio         = { version = "1", features = ["full"] }
 tokio-tungstenite = "0.20"
 futures-util  = "0.3"
 clap          = { version = "4", features = ["derive"] }
-serde         = { version = "1", features = ["derive"] }
 serde_json    = "1"
-sha2          = "0.10"
-hex           = "0.4"
-uuid          = { version = "1", features = ["v4"] }
-reqwest       = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
