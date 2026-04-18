@@ -136,7 +136,7 @@ export function useOmniViewWS(containerRef: React.RefObject<HTMLDivElement | nul
 		const next = !isPausedRef.current;
 		isPausedRef.current = next;
 		setIsPaused(next);
-		svc.send(next ? "pause" : "resume");
+		svc.send(JSON.stringify({ type: next ? "pause" : "resume" }));
 	}, []);
 
 	return {

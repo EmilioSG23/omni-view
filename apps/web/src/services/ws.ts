@@ -36,9 +36,14 @@ export class OmniWSService {
 
 		ws.onmessage = (event: MessageEvent) => {
 			if (typeof event.data === "string") {
-				if (event.data === "reinit") {
-					this.destroyRenderer();
-					this.callbacks.onReinit?.();
+				try {
+					const msg = JSON.parse(event.data) as { type?: string };
+					if (msg.type === "reinit") {
+						this.destroyRenderer();
+						this.callbacks.onReinit?.();
+					}
+				} catch {
+					// ignore non-JSON text messages
 				}
 				return;
 			}

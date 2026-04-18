@@ -26,6 +26,8 @@ pub async fn start_server(config: Config) {
     println!("OmniView Agent ready");
     println!("  WebSocket : ws://{}", config.bind_addr);
     println!("  Encoder   : {}", config.encoder);
+		println!("  FPS       : {}", config.fps);
+		println!("  Quality   : {}", config.quality);
     println!("\n[IDLE] No clients — capture paused.");
 
     let fps = Arc::new(AtomicU32::new(config.fps));
@@ -36,6 +38,9 @@ pub async fn start_server(config: Config) {
 
     let (mpsc_tx, mut mpsc_rx) = mpsc::channel::<StreamEvent>(4);
     let (bcast_tx, _initial_rx) = broadcast::channel::<StreamEvent>(8);
+
+    let init_cache: Arc<tokio::sync::Mutex<Option<Arc<Vec<u8>>>>> =
+        Arc::new(tokio::sync::Mutex::new(None));
 
     let session_capture = session.clone();
     let enc_config = EncoderConfig {
@@ -48,8 +53,18 @@ pub async fn start_server(config: Config) {
     });
 
     let bcast_tx_fanout = bcast_tx.clone();
+    let init_cache_fanout = init_cache.clone();
     tokio::spawn(async move {
         while let Some(event) = mpsc_rx.recv().await {
+            match &event {
+                StreamEvent::Init(data) => {
+                    *init_cache_fanout.lock().await = Some(data.clone());
+                }
+                StreamEvent::Reinit => {
+                    *init_cache_fanout.lock().await = None;
+                }
+                _ => {}
+            }
             let _ = bcast_tx_fanout.send(event);
         }
     });
@@ -72,6 +87,7 @@ pub async fn start_server(config: Config) {
             session.clone(),
             fps.clone(),
             quality.clone(),
+            init_cache.clone(),
         ));
     }
 }
@@ -84,6 +100,7 @@ async fn handle_client(
     session: SessionControl,
     fps: Arc<AtomicU32>,
     quality: Arc<AtomicU8>,
+    init_cache: Arc<tokio::sync::Mutex<Option<Arc<Vec<u8>>>>>,
 ) {
     println!("[CONNECTING] Incoming connection from {addr}");
 
@@ -101,6 +118,17 @@ async fn handle_client(
         session.set(SessionState::Streaming);
         println!("[STREAMING] First client connected — capture started");
     }
+
+    // Always send the cached init segment if available — both late joiners and
+    // clients reconnecting after a prior session need ftyp+moov before any moof+mdat.
+    let cached = init_cache.lock().await.clone();
+    if let Some(data) = cached {
+        if sender.send(Message::Binary((*data).clone())).await.is_err() {
+            client_count.fetch_sub(1, Ordering::Release);
+            return;
+        }
+    }
+
     println!("[STREAMING] {addr} connected ({} total)", prev_count + 1);
 
     let paused = Arc::new(AtomicBool::new(false));
@@ -109,7 +137,7 @@ async fn handle_client(
         tokio::select! {
             event = frame_rx.recv() => {
                 match event {
-                    Ok(StreamEvent::Frame(data)) => {
+                    Ok(StreamEvent::Init(data)) | Ok(StreamEvent::Frame(data)) => {
                         if paused.load(Ordering::Relaxed) {
                             continue;
                         }
