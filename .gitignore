@@ -8,5 +8,8 @@ build/*
 target/*
 mvp/*
 
-# Do not commit local environment files
-/apps/backend/.env
+*/.env
+*/.env.local
+*/.env.development
+*/.env.test
+*/.env.production
