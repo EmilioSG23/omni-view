@@ -55,8 +55,6 @@ impl SessionControl {
         SessionState::from(self.state.load(Ordering::Acquire))
     }
 
-    /// Returns true only when the session is actively streaming.
-    /// The capture loop should run only when this is true.
     pub fn should_capture(&self) -> bool {
         self.get() == SessionState::Streaming
     }

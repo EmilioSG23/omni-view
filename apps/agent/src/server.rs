@@ -1,30 +1,25 @@
 use std::net::SocketAddr;
 use std::sync::{
-    atomic::{AtomicBool, AtomicU32, AtomicU8, AtomicUsize, Ordering},
+    atomic::{AtomicU32, AtomicU8, AtomicUsize, Ordering},
     Arc,
 };
 
 use crate::consts::{SessionControl, SessionState};
+use crate::config::interface::Config as ServerConfig;
 use crate::encoders::{run_capture_loop, EncoderConfig, StreamEvent};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
-pub struct Config {
-    pub bind_addr: String,
-    pub fps: u32,
-    pub quality: u8,
-    pub encoder: String,
-}
-
-pub async fn start_server(config: Config) {
+pub async fn start_server(config: ServerConfig) {
     let listener = TcpListener::bind(&config.bind_addr)
         .await
         .unwrap_or_else(|e| panic!("Failed to bind to {}: {e}", config.bind_addr));
 
     println!("OmniView Agent ready");
     println!("  WebSocket : ws://{}", config.bind_addr);
+    println!("  Agent ID  : {}", config.agent_id);
     println!("  Encoder   : {}", config.encoder);
 		println!("  FPS       : {}", config.fps);
 		println!("  Quality   : {}", config.quality);
@@ -39,9 +34,6 @@ pub async fn start_server(config: Config) {
     let (mpsc_tx, mut mpsc_rx) = mpsc::channel::<StreamEvent>(4);
     let (bcast_tx, _initial_rx) = broadcast::channel::<StreamEvent>(8);
 
-    let init_cache: Arc<tokio::sync::Mutex<Option<Arc<Vec<u8>>>>> =
-        Arc::new(tokio::sync::Mutex::new(None));
-
     let session_capture = session.clone();
     let enc_config = EncoderConfig {
         encoder: config.encoder.clone(),
@@ -53,21 +45,14 @@ pub async fn start_server(config: Config) {
     });
 
     let bcast_tx_fanout = bcast_tx.clone();
-    let init_cache_fanout = init_cache.clone();
     tokio::spawn(async move {
         while let Some(event) = mpsc_rx.recv().await {
-            match &event {
-                StreamEvent::Init(data) => {
-                    *init_cache_fanout.lock().await = Some(data.clone());
-                }
-                StreamEvent::Reinit => {
-                    *init_cache_fanout.lock().await = None;
-                }
-                _ => {}
-            }
             let _ = bcast_tx_fanout.send(event);
         }
     });
+
+    let password_hash = Arc::new(config.password_hash);
+    let agent_id = Arc::new(config.agent_id);
 
     loop {
         let (stream, addr) = match listener.accept().await {
@@ -87,7 +72,8 @@ pub async fn start_server(config: Config) {
             session.clone(),
             fps.clone(),
             quality.clone(),
-            init_cache.clone(),
+            password_hash.clone(),
+            agent_id.clone(),
         ));
     }
 }
@@ -100,7 +86,8 @@ async fn handle_client(
     session: SessionControl,
     fps: Arc<AtomicU32>,
     quality: Arc<AtomicU8>,
-    init_cache: Arc<tokio::sync::Mutex<Option<Arc<Vec<u8>>>>>,
+    password_hash: Arc<String>,
+    agent_id: Arc<String>,
 ) {
     println!("[CONNECTING] Incoming connection from {addr}");
 
@@ -113,25 +100,49 @@ async fn handle_client(
     };
     let (mut sender, mut receiver) = ws.split();
 
+    let authenticated = 'auth: loop {
+        match receiver.next().await {
+            Some(Ok(Message::Text(text))) => {
+                let Ok(msg) = serde_json::from_str::<serde_json::Value>(&text) else {
+                    break 'auth false;
+                };
+                if msg["type"] != "auth" {
+                    break 'auth false;
+                }
+                let password = msg["password"].as_str().unwrap_or("");
+                if crate::config::hash_password(password) == *password_hash {
+                    let ok = serde_json::json!({
+                        "type": "auth_ok",
+                        "agent_id": *agent_id,
+                    });
+                    let _ = sender.send(Message::Text(ok.to_string())).await;
+                    break 'auth true;
+                } else {
+                    let err = serde_json::json!({
+                        "type": "auth_error",
+                        "reason": "invalid_password",
+                    });
+                    let _ = sender.send(Message::Text(err.to_string())).await;
+                    break 'auth false;
+                }
+            }
+            _ => break 'auth false,
+        }
+    };
+
+    if !authenticated {
+        println!("[AUTH] Rejected client from {addr}");
+        return;
+    }
+
     let prev_count = client_count.fetch_add(1, Ordering::Release);
     if prev_count == 0 {
         session.set(SessionState::Streaming);
         println!("[STREAMING] First client connected — capture started");
     }
+    println!("[STREAMING] {addr} authenticated ({} total)", prev_count + 1);
 
-    // Always send the cached init segment if available — both late joiners and
-    // clients reconnecting after a prior session need ftyp+moov before any moof+mdat.
-    let cached = init_cache.lock().await.clone();
-    if let Some(data) = cached {
-        if sender.send(Message::Binary((*data).clone())).await.is_err() {
-            client_count.fetch_sub(1, Ordering::Release);
-            return;
-        }
-    }
-
-    println!("[STREAMING] {addr} connected ({} total)", prev_count + 1);
-
-    let paused = Arc::new(AtomicBool::new(false));
+    let paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     loop {
         tokio::select! {
@@ -165,7 +176,7 @@ async fn handle_client(
                     }
                     Some(Ok(Message::Close(_))) | None => break,
                     Some(Err(_)) => break,
-                    _ => {}
+                    _ => {} // Ping/Pong handled automatically by tungstenite
                 }
             }
         }
@@ -182,7 +193,7 @@ async fn handle_client(
 
 fn handle_control_message(
     text: &str,
-    paused: &Arc<AtomicBool>,
+    paused: &Arc<std::sync::atomic::AtomicBool>,
     fps: &Arc<AtomicU32>,
     quality: &Arc<AtomicU8>,
     addr: &SocketAddr,
@@ -215,11 +226,13 @@ fn handle_control_message(
                         .clamp(1, 100) as u8;
                     (f, q)
                 }
-                _ => (10u32, 60u8),
+                _ => (10u32, 60u8), // "balanced" default
             };
             fps.store(new_fps, Ordering::Relaxed);
             quality.store(new_quality, Ordering::Relaxed);
-            println!("[CONFIG] {addr} changed quality → fps={new_fps} quality={new_quality}");
+            println!(
+                "[CONFIG] {addr} changed quality → fps={new_fps} quality={new_quality}"
+            );
         }
         _ => {}
     }

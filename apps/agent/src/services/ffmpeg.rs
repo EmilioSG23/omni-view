@@ -104,7 +104,7 @@ pub(crate) fn spawn_ffmpeg(
 pub(crate) fn run_stdout_pump(stdout: ChildStdout, tx: mpsc::Sender<StreamEvent>) {
     use std::io::Read;
     let mut reader = stdout;
-    let mut buf = vec![0u8; 131_072]; // 128 KiB read buffer
+    let mut buf = vec![0u8; 131_072];
 
     let mut init_buf: Vec<u8> = Vec::new();
     let mut init_done = false;
@@ -119,16 +119,14 @@ pub(crate) fn run_stdout_pump(stdout: ChildStdout, tx: mpsc::Sender<StreamEvent>
                     init_buf.extend_from_slice(&buf[..n]);
                     if let Some(moof_pos) = find_box(&init_buf, b"moof") {
                         init_done = true;
-                        // ftyp + moov (everything before the first moof).
                         let init = StreamEvent::Init(Arc::new(init_buf[..moof_pos].to_vec()));
                         if tx.blocking_send(init).is_err() {
                             break;
                         }
-                        // moof + mdat that arrived in the same buffer slice.
                         if moof_pos < init_buf.len() {
                             send_frame(&tx, &init_buf[moof_pos..]);
                         }
-                        drop(init_buf); // release memory; not used again
+                        drop(init_buf);
                         init_buf = Vec::new();
                     }
                 }
@@ -155,7 +153,6 @@ fn find_box(buf: &[u8], fourcc: &[u8; 4]) -> Option<usize> {
         if &buf[pos + 4..pos + 8] == fourcc {
             return Some(pos);
         }
-        // size == 0 means the box extends to EOF; size < 8 is malformed — stop.
         if size < 8 {
             break;
         }
