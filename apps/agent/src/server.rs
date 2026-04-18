@@ -1,5 +1,9 @@
-use crate::encoders::{run_capture_loop, EncoderConfig};
+use crate::encoders::{run_capture_loop, EncoderConfig, StreamEvent};
 use futures_util::{SinkExt, StreamExt};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
@@ -11,9 +15,6 @@ pub struct Config {
     pub encoder: String,
 }
 
-/// Starts the WebSocket server. Handles **one client at a time** — the server
-/// blocks until the current client disconnects before accepting the next one.
-/// While no client is connected the capture thread is completely idle.
 pub async fn start_server(config: Config) {
     let listener = TcpListener::bind(&config.bind_addr)
         .await
@@ -41,9 +42,6 @@ pub async fn start_server(config: Config) {
     }
 }
 
-/// Manages a single WebSocket client session.
-/// Spawns a blocking capture+encode thread and forwards its output as binary
-/// WebSocket messages until the client disconnects.
 async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8, encoder: String) {
     let ws = match accept_async(stream).await {
         Ok(ws) => ws,
@@ -53,34 +51,41 @@ async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8, enc
         }
     };
     let (mut sender, mut receiver) = ws.split();
+    let (tx, mut rx) = mpsc::channel::<StreamEvent>(2);
 
-    // Bounded channel (depth=2) provides natural back-pressure.
-    let (tx, mut rx) = mpsc::channel::<Vec<u8>>(2);
+    let paused = Arc::new(AtomicBool::new(false));
+    let paused_capture = Arc::clone(&paused);
 
-    // All capture/encode logic lives in the encoders module; server.rs knows
-    // nothing about specific codecs.
     let capture_handle = tokio::task::spawn_blocking(move || {
-        run_capture_loop(EncoderConfig { encoder, fps, quality }, tx);
+        run_capture_loop(EncoderConfig { encoder, fps, quality }, tx, paused_capture);
     });
 
-    // Drive the WebSocket: forward frames from the capture thread and react to
-    // any control messages (Close, errors) from the client.
     loop {
         tokio::select! {
-            // A new encoded frame is ready — send it.
-            frame = rx.recv() => {
-                match frame {
-                    Some(encoded) => {
-                        if sender.send(Message::Binary(encoded)).await.is_err() {
+            event = rx.recv() => {
+                match event {
+                    Some(StreamEvent::Frame(data)) => {
+                        if sender.send(Message::Binary(data)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(StreamEvent::Reinit) => {
+                        if sender.send(Message::Text("reinit".into())).await.is_err() {
                             break;
                         }
                     }
                     None => break, // capture thread exited
                 }
             }
-            // An incoming message arrived from the client.
             msg = receiver.next() => {
                 match msg {
+                    Some(Ok(Message::Text(text))) => {
+                        match text.as_str() {
+                            "pause"  => paused.store(true,  Ordering::Relaxed),
+                            "resume" => paused.store(false, Ordering::Relaxed),
+                            _        => {}
+                        }
+                    }
                     Some(Ok(Message::Close(_))) | None => break,
                     Some(Err(_)) => break,
                     _ => {} // Pings are handled automatically by tungstenite
@@ -88,9 +93,6 @@ async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8, enc
             }
         }
     }
-
-    // Drop the receiver so that the capture thread's next blocking_send fails
-    // and it exits cleanly, then wait for it.
     drop(rx);
     let _ = capture_handle.await;
 }

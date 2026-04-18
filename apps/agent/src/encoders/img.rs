@@ -2,10 +2,10 @@ use image::{DynamicImage, ImageBuffer, ImageOutputFormat, Rgb};
 use std::io::Cursor;
 use tokio::sync::mpsc;
 
-/// An encoder that compresses each BGRA frame to an image format (JPEG, PNG,
-/// WebP, …) and forwards the resulting bytes to `tx`.
+use super::StreamEvent;
+
 pub struct ImageEncoder {
-    tx: mpsc::Sender<Vec<u8>>,
+    tx: mpsc::Sender<StreamEvent>,
     width: u32,
     height: u32,
     quality: u8,
@@ -18,7 +18,7 @@ impl ImageEncoder {
         height: u32,
         quality: u8,
         format: &str,
-        tx: mpsc::Sender<Vec<u8>>,
+        tx: mpsc::Sender<StreamEvent>,
     ) -> Self {
         Self { tx, width, height, quality, format: format.to_owned() }
     }
@@ -27,13 +27,10 @@ impl ImageEncoder {
 impl super::Encoder for ImageEncoder {
     fn write_frame(&mut self, frame: &[u8]) -> bool {
         let encoded = encode(frame, self.width, self.height, self.quality, &self.format);
-        self.tx.blocking_send(encoded).is_ok()
+        self.tx.blocking_send(StreamEvent::Frame(encoded)).is_ok()
     }
 }
 
-/// Encodes a single raw BGRA frame to the named image format.
-/// Supported names: `jpeg`/`jpg`, `png`, `webp`, `gif`, `tiff`, `bmp`.
-/// Falls back to JPEG for unknown names.
 pub fn encode(frame: &[u8], width: u32, height: u32, quality: u8, format: &str) -> Vec<u8> {
     let fmt = match format.to_lowercase().as_str() {
         "jpeg" | "jpg" => ImageOutputFormat::Jpeg(quality),
@@ -50,11 +47,9 @@ pub fn encode(frame: &[u8], width: u32, height: u32, quality: u8, format: &str) 
     encode_bgra(frame, width, height, fmt)
 }
 
-/// Converts BGRA → RGB and encodes to the given `ImageOutputFormat`.
 fn encode_bgra(frame: &[u8], width: u32, height: u32, fmt: ImageOutputFormat) -> Vec<u8> {
     let mut rgb = Vec::with_capacity((width * height * 3) as usize);
     for px in frame.chunks_exact(4) {
-        // BGRA layout: px[0]=B px[1]=G px[2]=R px[3]=A
         rgb.push(px[2]); // R
         rgb.push(px[1]); // G
         rgb.push(px[0]); // B

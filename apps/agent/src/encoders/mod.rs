@@ -1,61 +1,133 @@
 mod h264;
 mod img;
 mod interface;
-pub use interface::{Encoder, EncoderConfig};
+pub use interface::{Encoder, EncoderConfig, StreamEvent};
 
-use crate::capture::ScreenCapturer;
+use crate::capture::{CaptureResult, ScreenCapturer};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
-/// Run the capture + encode loop on the **current** blocking thread.
-///
-/// Captures frames from the primary display, encodes them per `config`, and
-/// forwards byte chunks to `tx`. Returns when the channel closes (client
-/// disconnected) or a fatal error occurs.
-///
-/// Call this inside `tokio::task::spawn_blocking`.
-pub fn run_capture_loop(config: EncoderConfig, tx: mpsc::Sender<Vec<u8>>) {
+pub fn run_capture_loop(
+    config: EncoderConfig,
+    tx: mpsc::Sender<StreamEvent>,
+    paused: Arc<AtomicBool>,
+) {
     let mut capturer = ScreenCapturer::new();
-    let (w, h) = (capturer.width, capturer.height);
     let interval = Duration::from_secs_f64(1.0 / config.fps as f64);
 
-    let mut encoder: Box<dyn Encoder> = match config.encoder.to_lowercase().as_str() {
-        "h264" => match h264::H264StreamEncoder::start(w, h, config.fps, config.quality, tx) {
-            Some(enc) => Box::new(enc),
-            None => {
-                eprintln!("[H264] Failed to start encoder — session dropped.");
-                return;
-            }
-        },
-        fmt => Box::new(img::ImageEncoder::new(w, h, config.quality, fmt, tx)),
+    let mut encoder = match build_encoder(&config, capturer.width, capturer.height, tx.clone()) {
+        Some(e) => e,
+        None => {
+            eprintln!("[encoder] Failed to start encoder — session dropped.");
+            return;
+        }
     };
 
-    // Fixed-rate scheduler: advance next_tick by a fixed interval every
-    // iteration so timing errors don't accumulate (unlike fixed-period sleep).
     let mut next_tick = Instant::now() + interval;
     loop {
-        let frame = next_frame(&mut capturer);
-        if !encoder.write_frame(&frame) {
-            break;
+        if paused.load(Ordering::Relaxed) {
+            if tx.is_closed() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+            next_tick = Instant::now() + interval;
+            continue;
         }
+
+        match poll_capture(&mut capturer) {
+            CaptureResult::Frame(frame) => {
+                if !encoder.write_frame(&frame) {
+                    break; // client disconnected
+                }
+            }
+            CaptureResult::Reinit => {
+                let stable = match wait_for_stable_display(&mut capturer, &tx) {
+                    Some(f) => f,
+                    None => break, // client disconnected during transition
+                };
+                let (w, h) = (capturer.width, capturer.height);
+
+                drop(encoder);
+
+                let _ = tx.blocking_send(StreamEvent::Reinit);
+
+                let mut new_enc = match build_encoder(&config, w, h, tx.clone()) {
+                    Some(e) => e,
+                    None => break,
+                };
+                if !new_enc.write_frame(&stable) {
+                    break;
+                }
+                encoder = new_enc;
+                next_tick = Instant::now() + interval;
+                continue;
+            }
+            CaptureResult::NotReady => unreachable!(),
+        }
+
         sleep_until(next_tick);
         next_tick += interval;
     }
 }
 
-/// Spins (with a short yield) until the capturer returns a frame.
-fn next_frame(capturer: &mut ScreenCapturer) -> Vec<u8> {
-    loop {
-        if let Some(f) = capturer.try_capture() {
-            return f;
-        }
-        // Sub-millisecond yield avoids burning 100 % CPU while still catching
-        // the next frame quickly (scrap surfaces new frames at display rate).
-        std::thread::sleep(Duration::from_micros(500));
+fn build_encoder(
+    config: &EncoderConfig,
+    w: u32,
+    h: u32,
+    tx: mpsc::Sender<StreamEvent>,
+) -> Option<Box<dyn Encoder>> {
+    match config.encoder.to_lowercase().as_str() {
+        "h264" => h264::H264StreamEncoder::start(w, h, config.fps, config.quality, tx)
+            .map(|e| Box::new(e) as Box<dyn Encoder>),
+        fmt => Some(
+            Box::new(img::ImageEncoder::new(w, h, config.quality, fmt, tx)) as Box<dyn Encoder>,
+        ),
     }
 }
 
-/// Sleeps until `deadline`. No-op if already past.
+fn poll_capture(capturer: &mut ScreenCapturer) -> CaptureResult {
+    loop {
+        match capturer.try_capture() {
+            CaptureResult::NotReady => std::thread::sleep(Duration::from_micros(500)),
+            other => return other,
+        }
+    }
+}
+
+fn wait_for_stable_display(
+    capturer: &mut ScreenCapturer,
+    tx: &mpsc::Sender<StreamEvent>,
+) -> Option<Vec<u8>> {
+    const STABLE_FRAMES: usize = 4;
+
+    let mut consecutive: usize = 0;
+
+    loop {
+        if tx.is_closed() {
+            return None;
+        }
+        match capturer.try_capture() {
+            CaptureResult::Frame(f) => {
+                consecutive += 1;
+                if consecutive >= STABLE_FRAMES {
+                    return Some(f);
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            CaptureResult::NotReady => {
+                std::thread::sleep(Duration::from_micros(500));
+            }
+            CaptureResult::Reinit => {
+                consecutive = 0;
+            }
+        }
+    }
+}
+
 fn sleep_until(deadline: Instant) {
     let now = Instant::now();
     if deadline > now {
