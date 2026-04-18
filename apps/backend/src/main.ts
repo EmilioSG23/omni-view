@@ -2,6 +2,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { WsAdapter } from "@nestjs/platform-ws";
 import { AppModule } from "./app.module";
+import logger from "./common/custom-logger.service";
 
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule);
@@ -18,8 +19,9 @@ async function bootstrap(): Promise<void> {
 	app.setGlobalPrefix("api");
 
 	const port = process.env.PORT ?? 3000;
+	app.useLogger(logger as any);
 	await app.listen(port);
-	console.log(`OmniView Backend running on http://localhost:${port}/api`);
+	logger.info(`OmniView Backend running on http://localhost:${port}/api`, "Bootstrap");
 }
 
 bootstrap();
