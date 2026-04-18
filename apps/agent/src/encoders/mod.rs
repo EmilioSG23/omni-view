@@ -4,17 +4,14 @@ mod interface;
 pub use interface::{Encoder, EncoderConfig, StreamEvent};
 
 use crate::capture::{CaptureResult, ScreenCapturer};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use crate::consts::SessionControl;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 pub fn run_capture_loop(
     config: EncoderConfig,
     tx: mpsc::Sender<StreamEvent>,
-    paused: Arc<AtomicBool>,
+    session: SessionControl,
 ) {
     let mut capturer = ScreenCapturer::new();
     let interval = Duration::from_secs_f64(1.0 / config.fps as f64);
@@ -29,7 +26,7 @@ pub fn run_capture_loop(
 
     let mut next_tick = Instant::now() + interval;
     loop {
-        if paused.load(Ordering::Relaxed) {
+        if session.is_paused() {
             if tx.is_closed() {
                 break;
             }

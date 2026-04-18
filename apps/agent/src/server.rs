@@ -1,9 +1,6 @@
+use crate::consts::{SessionControl, SessionState};
 use crate::encoders::{run_capture_loop, EncoderConfig, StreamEvent};
 use futures_util::{SinkExt, StreamExt};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
@@ -25,7 +22,7 @@ pub async fn start_server(config: Config) {
     println!("  FPS:       {}", config.fps);
     println!("  Quality:   {}", config.quality);
 		println!("  Encoder:   {}", config.encoder);
-    println!("\n[IDLE] Waiting for client…");
+    println!("\n{} Waiting for client…", SessionState::Idle);
 
     loop {
         let (stream, addr) = match listener.accept().await {
@@ -36,9 +33,9 @@ pub async fn start_server(config: Config) {
             }
         };
 
-        println!("[ACTIVE] Client connected from {addr}");
+        println!("{} Client connecting from {addr}…", SessionState::Connecting);
         handle_client(stream, config.fps, config.quality, config.encoder.clone()).await;
-        println!("[IDLE] Client disconnected — waiting for next connection…\n");
+        println!("{} Client disconnected — waiting for next connection…\n", SessionState::Idle);
     }
 }
 
@@ -53,11 +50,13 @@ async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8, enc
     let (mut sender, mut receiver) = ws.split();
     let (tx, mut rx) = mpsc::channel::<StreamEvent>(2);
 
-    let paused = Arc::new(AtomicBool::new(false));
-    let paused_capture = Arc::clone(&paused);
+    let session = SessionControl::new(SessionState::Streaming);
+    let session_capture = session.clone();
+
+    println!("{} WebSocket established — streaming started", SessionState::Streaming);
 
     let capture_handle = tokio::task::spawn_blocking(move || {
-        run_capture_loop(EncoderConfig { encoder, fps, quality }, tx, paused_capture);
+        run_capture_loop(EncoderConfig { encoder, fps, quality }, tx, session_capture);
     });
 
     loop {
@@ -81,9 +80,15 @@ async fn handle_client(stream: tokio::net::TcpStream, fps: u32, quality: u8, enc
                 match msg {
                     Some(Ok(Message::Text(text))) => {
                         match text.as_str() {
-                            "pause"  => paused.store(true,  Ordering::Relaxed),
-                            "resume" => paused.store(false, Ordering::Relaxed),
-                            _        => {}
+                            "pause" => {
+                                session.set(SessionState::Paused);
+                                println!("{} Client requested pause", SessionState::Paused);
+                            }
+                            "resume" => {
+                                session.set(SessionState::Streaming);
+                                println!("{} Client resumed streaming", SessionState::Streaming);
+                            }
+                            _ => {}
                         }
                     }
                     Some(Ok(Message::Close(_))) | None => break,
