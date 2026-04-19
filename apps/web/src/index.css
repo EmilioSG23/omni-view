@@ -1,11 +1,150 @@
+@import "tailwindcss";
+
+@theme inline {
+	/* Surfaces → bg-base, bg-surface, bg-elevated, bg-overlay */
+	--color-base: var(--bg-base);
+	--color-surface: var(--bg-surface);
+	--color-elevated: var(--bg-elevated);
+	--color-overlay: var(--bg-overlay);
+
+	/* Border colors → border-border, border-border-strong */
+	--color-border: var(--border);
+	--color-border-strong: var(--border-strong);
+
+	/* Text / foreground → text-primary, text-secondary, text-muted, text-inverse */
+	--color-primary: var(--text-primary);
+	--color-secondary: var(--text-secondary);
+	--color-muted: var(--text-muted);
+	--color-inverse: var(--text-inverse);
+
+	/* Brand / semantic */
+	--color-accent: var(--accent);
+	--color-accent-dim: var(--accent-dim);
+	--color-accent-glow: var(--accent-glow);
+	--color-success: var(--success);
+	--color-success-dim: var(--success-dim);
+	--color-error: var(--error);
+	--color-error-dim: var(--error-dim);
+	--color-warn: var(--warn);
+	--color-info: var(--info);
+
+	/* Typography → font-sans, font-mono */
+	--font-sans: var(--font-sans);
+	--font-mono: var(--font-mono);
+}
+
+/* ─── DESIGN TOKENS ─────────────────────────────────────────────────────────── */
+
+:root {
+	/* Backgrounds */
+	--bg-base: #0c0d0f;
+	--bg-surface: #131416;
+	--bg-elevated: #1a1c1f;
+	--bg-overlay: #22252b;
+
+	/* Borders */
+	--border: #252830;
+	--border-strong: #363b45;
+
+	/* Text */
+	--text-primary: #e2e4e9;
+	--text-secondary: #8b929f;
+	--text-muted: #525761;
+	--text-inverse: #0c0d0f;
+
+	/* Accent — amber, like a hardware status LED */
+	--accent: #f59e0b;
+	--accent-dim: rgba(245, 158, 11, 0.15);
+	--accent-glow: rgba(245, 158, 11, 0.35);
+
+	/* Semantic */
+	--success: #22c55e;
+	--success-dim: rgba(34, 197, 94, 0.15);
+	--error: #ef4444;
+	--error-dim: rgba(239, 68, 68, 0.15);
+	--warn: #f97316;
+	--warn-dim: rgba(249, 115, 22, 0.15);
+	--info: #60a5fa;
+
+	/* Typography */
+	--font-sans: "IBM Plex Sans", system-ui, sans-serif;
+	--font-mono: "IBM Plex Mono", "Cascadia Code", monospace;
+}
+
+/* ─── RESET ──────────────────────────────────────────────────────────────────── */
+
 *,
 *::before,
 *::after {
 	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	overflow: hidden;
 }
 
 body {
-	margin: 0;
-	min-height: 100vh;
-	font-family: system-ui, sans-serif;
+	font-family: var(--font-sans);
+	@apply text-base;
+	line-height: 1.5;
+	background: var(--bg-base);
+	color: var(--color-primary);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: var(--border-strong);
+	border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-muted);
+}
+
+/* Focus ring */
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
+button {
+	font: inherit;
+	cursor: pointer;
+	border: none;
+	background: none;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+code,
+pre,
+.mono {
+	font-family: var(--font-mono);
+}
+
+@keyframes dot-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
 }

@@ -1,0 +1,72 @@
+import type { AgentSummary } from "@omni-view/shared";
+import { useEffect, useState } from "react";
+import { agentApi } from "../core/agent-api";
+import { StatusDot } from "./StatusDot";
+
+interface AgentCardProps {
+	agent: AgentSummary;
+	onConnect: (agent: AgentSummary) => void;
+}
+
+function formatAge(iso: string): string {
+	const diff = Date.now() - new Date(iso).getTime();
+	const s = Math.floor(diff / 1000);
+	if (s < 60) return "just now";
+	const m = Math.floor(s / 60);
+	if (m < 60) return `${m}m ago`;
+	const h = Math.floor(m / 60);
+	if (h < 24) return `${h}h ago`;
+	return `${Math.floor(h / 24)}d ago`;
+}
+
+export function AgentCard({ agent, onConnect }: AgentCardProps) {
+	const [online, setOnline] = useState(false);
+
+	useEffect(() => {
+		let cancelled = false;
+		agentApi
+			.getStatus(agent.agent_id)
+			.then((res) => {
+				if (!cancelled) setOnline(res.connected);
+			})
+			.catch(() => {
+				/* leave as offline */
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [agent.agent_id]);
+
+	return (
+		<article
+			className="bg-surface border border-border rounded-lg p-5 flex flex-col gap-3 cursor-pointer transition-[border-color,box-shadow] duration-120 hover:border-border-strong hover:shadow-sm"
+			onClick={() => onConnect(agent)}
+			role="button"
+			tabIndex={0}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") onConnect(agent);
+			}}
+			aria-label={`Connect to ${agent.label ?? agent.agent_id}`}
+		>
+			{/* Header row */}
+			<div className="flex items-center gap-2">
+				<StatusDot state={online ? "online" : "offline"} size={8} />
+				<span className="font-semibold text-sm flex-1 truncate">
+					{agent.label ?? agent.agent_id}
+				</span>
+				<span className="font-mono text-xs text-muted bg-elevated border border-border rounded-sm px-1.5 py-px">
+					{agent.version}
+				</span>
+			</div>
+
+			{/* ID */}
+			<p className="font-mono text-xs text-muted truncate">{agent.agent_id}</p>
+
+			{/* Footer row */}
+			<div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
+				<span className="text-xs text-muted">{agent.ws_url ?? "no url"}</span>
+				<span className="text-xs text-muted">{formatAge(agent.last_seen_at)}</span>
+			</div>
+		</article>
+	);
+}
