@@ -34,7 +34,7 @@ export function ConnectedViewersList() {
 	const { viewers, kickViewer, captureState } = useDevice();
 
 	return (
-		<aside className="flex flex-col gap-3 p-4 bg-surface rounded-xl border border-border min-w-0">
+		<aside className="flex flex-col h-full gap-3 p-4 bg-surface rounded-xl border border-border min-w-0">
 			<div className="flex items-center justify-between gap-2">
 				<h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Viewers</h2>
 				{viewers.length > 0 && (

@@ -18,8 +18,8 @@ export interface DeviceContextType {
 	password: string;
 	/** Update the in-memory password. Call `savePassword` to persist it to the backend. */
 	setPassword: (pw: string) => void;
-	/** Hash and store the current password on the backend. */
-	savePassword: () => Promise<void>;
+	/** Hash and store the current password on the backend. If `pw` is provided, use that value instead of the current in-memory password. */
+	savePassword: (pw?: string) => Promise<void>;
 	/** Current capture state. */
 	captureState: CaptureState;
 	/** Request display media and begin broadcasting to connected viewers. */
@@ -71,16 +71,20 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 	}, [agentId]);
 
 	// ── Password management ────────────────────────────────────────────────────
-	const savePassword = useCallback(async () => {
-		localStorage.setItem(PASSWORD_STORAGE_KEY, password);
-		const passwordHash = password ? await sha256hex(password) : undefined;
-		await agentApi.registerSelf({
-			agent_id: agentId,
-			version: BROWSER_AGENT_VERSION,
-			capture_mode: "browser",
-			password_hash: passwordHash,
-		});
-	}, [agentId, password]);
+	const savePassword = useCallback(
+		async (pw?: string) => {
+			const toStore = pw ?? password;
+			localStorage.setItem(PASSWORD_STORAGE_KEY, toStore);
+			const passwordHash = toStore ? await sha256hex(toStore) : undefined;
+			await agentApi.registerSelf({
+				agent_id: agentId,
+				version: BROWSER_AGENT_VERSION,
+				capture_mode: "browser",
+				password_hash: passwordHash,
+			});
+		},
+		[agentId, password],
+	);
 
 	return (
 		<DeviceContext.Provider

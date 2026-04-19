@@ -24,6 +24,35 @@ export const QUALITY_PRESETS: Record<Exclude<QualityPreset, "custom">, QualityCo
 	quality: { fps: 15, quality: 80 },
 };
 
+// Maximum allowed length for an agent session password. Projects should
+// import this constant from `@omni-view/shared` to keep the same limit.
+export const AGENT_PASSWORD_MAX_LENGTH = 8;
+
+/**
+ * Generate a random agent password consisting of letters and digits only.
+ * Uses the shared Web Crypto API when available, falling back to Math.random.
+ */
+export function generateAgentPassword(length = AGENT_PASSWORD_MAX_LENGTH): string {
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	// Prefer secure RNG when available
+	const cryptoObj = typeof globalThis !== "undefined" ? (globalThis as any).crypto : undefined;
+	if (cryptoObj && typeof cryptoObj.getRandomValues === "function") {
+		const arr = new Uint32Array(length);
+		cryptoObj.getRandomValues(arr);
+		let out = "";
+		for (let i = 0; i < length; i++) {
+			out += chars[arr[i] % chars.length];
+		}
+		return out;
+	}
+
+	let out = "";
+	for (let i = 0; i < length; i++) {
+		out += chars.charAt(Math.floor(Math.random() * chars.length));
+	}
+	return out;
+}
+
 // ─── Stream Transport ─────────────────────────────────────────────────────────
 
 /**

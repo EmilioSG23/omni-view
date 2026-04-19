@@ -1,6 +1,10 @@
+import { AGENT_PASSWORD_MAX_LENGTH, generateAgentPassword } from "@omni-view/shared";
 import { useState } from "react";
 import type { CaptureState } from "../context/DeviceContext";
 import { useDevice } from "../context/DeviceContext";
+import { EyeIcon } from "../icons/EyeIcon";
+import { EyeOffIcon } from "../icons/EyeOffIcon";
+import { RefreshIcon } from "../icons/RefreshIcon";
 
 function truncateId(id: string): string {
 	return id.length > 18 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id;
@@ -38,6 +42,21 @@ export function DevicePanel() {
 	const [copied, setCopied] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
+	const [showPassword, setShowPassword] = useState(false);
+
+	async function handleRegenerate() {
+		setSaving(true);
+		setSaveError(null);
+		try {
+			const newPw = generateAgentPassword(AGENT_PASSWORD_MAX_LENGTH);
+			setPassword(newPw);
+			await savePassword(newPw);
+		} catch (err) {
+			setSaveError(err instanceof Error ? err.message : "Failed to regenerate");
+		} finally {
+			setSaving(false);
+		}
+	}
 
 	async function handleCopy() {
 		await navigator.clipboard.writeText(agentId);
@@ -92,21 +111,42 @@ export function DevicePanel() {
 			{/* Password */}
 			<div className="flex flex-col gap-1">
 				<span className="text-xs text-muted">Session Password</span>
-				<div className="flex gap-2">
-					<input
-						type="password"
-						value={password}
-						onChange={(e) => setPassword(e.target.value)}
-						placeholder="Set a password…"
-						className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-elevated border border-border focus:border-accent focus:outline-none text-xs font-mono text-primary placeholder:text-muted"
-					/>
+				<div className="flex gap-2 items-center">
+					<div className="relative flex-1 min-w-0">
+						<input
+							type={showPassword ? "text" : "password"}
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							maxLength={AGENT_PASSWORD_MAX_LENGTH}
+							placeholder="Set a password…"
+							className="w-full flex-1 min-w-0 px-3 pr-10 py-1.5 rounded-lg bg-elevated border border-border focus:border-accent focus:outline-none text-xs font-mono text-primary placeholder:text-muted"
+						/>
+						<button
+							type="button"
+							onClick={() => setShowPassword((s) => !s)}
+							aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+							title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+							className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center px-2 py-1.5 rounded-md bg-transparent hover:bg-overlay text-muted text-xs transition-colors focus:outline-none"
+						>
+							{showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+						</button>
+					</div>
+					<button
+						type="button"
+						onClick={handleRegenerate}
+						disabled={saving}
+						title="Regenerar contraseña"
+						className="px-2 py-1.5 rounded-lg bg-elevated hover:bg-overlay text-muted text-xs font-medium transition-colors"
+					>
+						<RefreshIcon className="w-4 h-4" />
+					</button>
 					<button
 						type="button"
 						onClick={handleSavePassword}
 						disabled={saving}
 						className="px-3 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors disabled:opacity-50"
 					>
-						{saving ? "…" : "Save"}
+						Save
 					</button>
 				</div>
 				{saveError && <p className="text-error text-xs">{saveError}</p>}
@@ -118,28 +158,37 @@ export function DevicePanel() {
 					<span className="text-xs text-muted">Capture</span>
 					<CaptureStateBadge state={captureState} />
 				</div>
-				<button
-					type="button"
-					onClick={isCapturing ? stopCapture : startCapture}
-					disabled={!canCapture || captureState === "requesting"}
-					className={[
-						"w-full py-2 rounded-lg text-xs font-semibold transition-colors",
-						isCapturing
-							? "bg-error/10 hover:bg-error/20 text-error border border-error/30"
-							: "bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30",
-						(!canCapture || captureState === "requesting") && "opacity-50 cursor-not-allowed",
-					]
-						.filter(Boolean)
-						.join(" ")}
-				>
-					{isCapturing
-						? "Stop Sharing"
-						: captureState === "requesting"
-							? "Requesting…"
-							: captureState === "error"
-								? "Retry Capture"
-								: "Share Screen"}
-				</button>
+				<div className="flex gap-2">
+					<button
+						type="button"
+						onClick={isCapturing ? stopCapture : startCapture}
+						disabled={!canCapture || captureState === "requesting"}
+						className={[
+							"w-full py-2 rounded-lg text-xs font-semibold transition-colors",
+							isCapturing
+								? "bg-error/10 hover:bg-error/20 text-error border border-error/30"
+								: "bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30",
+							(!canCapture || captureState === "requesting") && "opacity-50 cursor-not-allowed",
+						]
+							.filter(Boolean)
+							.join(" ")}
+					>
+						{isCapturing
+							? "Stop Sharing"
+							: captureState === "requesting"
+								? "Requesting…"
+								: captureState === "error"
+									? "Retry Capture"
+									: "Share Screen"}
+					</button>
+					<button
+						className="p-2 rounded-lg text-xs font-semibold transition-colors
+					bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30"
+						onClick={() => alert("Settings dialog not implemented yet")}
+					>
+						⚙
+					</button>
+				</div>
 				{!canCapture && (
 					<p className="text-warn text-xs text-center">
 						Requires HTTPS or localhost — not available over plain HTTP.
