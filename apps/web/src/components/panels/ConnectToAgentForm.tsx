@@ -1,8 +1,8 @@
 import { PasswordPrompt } from "@/components/PasswordPrompt";
 import { useModal } from "@/hooks/useModal";
 import { agentApi } from "@/services/agent-api";
-import type { AgentSummary } from "@omni-view/shared";
-import { type FormEvent, useState } from "react";
+import { DEVICE_ID_LENGTH, type AgentSummary } from "@omni-view/shared";
+import { useState, type ChangeEvent, type ClipboardEvent, type FormEvent } from "react";
 
 interface ConnectToAgentFormProps {
 	onConnect: (agent: AgentSummary, password: string) => void;
@@ -50,9 +50,21 @@ export function ConnectToAgentForm({ onConnect }: ConnectToAgentFormProps) {
 			</h2>
 			<div className="flex gap-2">
 				<input
-					type="text"
+					type="tel"
+					inputMode="numeric"
+					pattern="[0-9]*"
+					maxLength={DEVICE_ID_LENGTH}
 					value={agentId}
-					onChange={(e) => setAgentId(e.target.value)}
+					onChange={(e: ChangeEvent<HTMLInputElement>) => {
+						const digits = e.target.value.replace(/\D/g, "");
+						setAgentId(digits);
+					}}
+					onPaste={(e: ClipboardEvent<HTMLInputElement>) => {
+						e.preventDefault();
+						const paste = e.clipboardData?.getData("text") ?? "";
+						const digits = paste.replace(/\D/g, "");
+						if (digits) setAgentId((prev) => (prev + digits).slice(0, DEVICE_ID_LENGTH));
+					}}
 					placeholder="Paste Agent ID…"
 					className="flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-elevated border border-border focus:border-accent focus:outline-none text-sm font-mono text-primary placeholder:text-muted"
 				/>
