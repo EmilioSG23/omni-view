@@ -6,7 +6,7 @@ import type {
 	ViewerInfo,
 	WhitelistEntry,
 } from "@omni-view/shared";
-import { fetchJson } from "./fetch";
+import { fetchJson } from "../core/fetch";
 
 export const agentApi = {
 	/** List all registered agents. */

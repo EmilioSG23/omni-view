@@ -3,11 +3,8 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import WebSocket from "ws";
 import logger from "../common/custom-logger.service";
-import { generateSessionPassword, hashPassword } from "../common/utils/crypto";
 import { FramesService } from "../frames/frames.service";
 import { WsGateway } from "../ws/ws.gateway";
-
-export { generateSessionPassword, hashPassword };
 
 const CONTEXT = "AgentClient";
 

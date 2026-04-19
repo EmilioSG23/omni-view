@@ -5,11 +5,11 @@ import { ConnectForm } from "../components/viewer/ConnectForm";
 import { ControlButton } from "../components/viewer/ControlButton";
 import { QualityBar } from "../components/viewer/QualityBar";
 import { WebRTCViewer } from "../components/WebRTCViewer";
-import { AgentSession, type SessionState } from "../core/agent-ws";
 import { useImageViewer } from "../hooks/viewer/useImageViewer";
 import { useMseViewer } from "../hooks/viewer/useMseViewer";
 import { useQualityControls } from "../hooks/viewer/useQualityControls";
 import { useStreamHealth } from "../hooks/viewer/useStreamHealth";
+import { AgentSession, type SessionState } from "../services/agent-ws";
 
 interface ViewerPageProps {
 	agent: AgentSummary;

@@ -1,7 +1,7 @@
 import type { AgentSummary } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getDeviceId } from "../core/device-identity";
-import { createReceiverPeer, getSignalingUrl } from "../utils/webrtc";
+import { createReceiverPeer, getSignalingUrl } from "../core/webrtc";
+import { getDeviceId } from "../utils/device-identity";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "disconnected" | "rejected";
 

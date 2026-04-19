@@ -2,7 +2,7 @@
 
 import { AgentSummary } from "@omni-view/shared";
 import { useState } from "react";
-import { useWhitelistCheck } from "../../core/whitelist";
+import { useWhitelistCheck } from "../../hooks/useWhitelistCheck";
 
 interface ConnectFormProps {
 	agent: AgentSummary;

@@ -13,28 +13,15 @@ import {
 import { hashPassword } from "../common/utils/crypto";
 import { WsGateway } from "../ws/ws.gateway";
 import { AgentClientService } from "./agent-client.service";
-import { AgentEntity } from "./agent.entity";
 import {
 	AddToWhitelistDto,
-	AgentSummaryDto,
 	CheckWhitelistQueryDto,
 	ConnectAgentDto,
 	RegisterAgentDto,
-	RegisterAgentResponseDto,
 } from "./agents.dto";
+import { toAgentSummary } from "./agents.mapper";
+import { AgentSummaryDto, RegisterAgentResponseDto } from "./agents.responses";
 import { AgentsService } from "./agents.service";
-
-function toSummary(entity: AgentEntity): AgentSummaryDto {
-	return {
-		agent_id: entity.agent_id,
-		label: entity.label,
-		version: entity.version,
-		ws_url: entity.ws_url,
-		capture_mode: entity.capture_mode,
-		registered_at: entity.registered_at.toISOString(),
-		last_seen_at: entity.last_seen_at.toISOString(),
-	};
-}
 
 @Controller("agents")
 export class AgentsController {
@@ -58,14 +45,14 @@ export class AgentsController {
 	@Get()
 	async findAll(): Promise<AgentSummaryDto[]> {
 		const entities = await this.agentsService.findAll();
-		return entities.map(toSummary);
+		return entities.map(toAgentSummary);
 	}
 
 	/** Get a specific agent by ID. */
 	@Get(":id")
 	async findOne(@Param("id") id: string): Promise<AgentSummaryDto> {
 		const entity = await this.agentsService.findOne(id);
-		return toSummary(entity);
+		return toAgentSummary(entity);
 	}
 
 	/** Mark an agent as recently active. Called by the agent on each heartbeat. */

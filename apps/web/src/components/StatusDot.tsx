@@ -1,4 +1,4 @@
-import type { SessionState } from "../core/agent-ws";
+import type { SessionState } from "../services/agent-ws";
 
 interface StatusDotProps {
 	state: SessionState | "online" | "offline";

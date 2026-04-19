@@ -1,7 +1,7 @@
 import type { AgentSummary } from "@omni-view/shared";
 import { type FormEvent, useState } from "react";
-import { agentApi } from "../core/agent-api";
 import { useModal } from "../hooks/useModal";
+import { agentApi } from "../services/agent-api";
 
 interface ConnectToAgentFormProps {
 	onConnect: (agent: AgentSummary, password: string) => void;

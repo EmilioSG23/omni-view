@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { agentApi } from "./agent-api";
-import { getDeviceId } from "./device-identity";
+import { agentApi } from "../services/agent-api";
+import { getDeviceId } from "../utils/device-identity";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
