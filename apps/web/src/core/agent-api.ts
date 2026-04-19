@@ -6,21 +6,7 @@ import type {
 	ViewerInfo,
 	WhitelistEntry,
 } from "@omni-view/shared";
-
-const BASE =
-	(window as { electronAPI?: { backendUrl?: string } }).electronAPI?.backendUrl ?? "/api";
-
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-	const res = await fetch(`${BASE}${path}`, {
-		headers: { "Content-Type": "application/json", ...init?.headers },
-		...init,
-	});
-	if (!res.ok) {
-		const body = await res.text().catch(() => "");
-		throw new Error(`${res.status} ${res.statusText}${body ? `: ${body}` : ""}`);
-	}
-	return res.json() as Promise<T>;
-}
+import { fetchJson } from "./fetch";
 
 export const agentApi = {
 	/** List all registered agents. */

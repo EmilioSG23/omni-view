@@ -4,7 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
+		"dev": "vite --host",
+		"dev:no-expose": "vite",
 		"build": "tsc -b && vite build",
 		"preview": "vite preview"
 	},
