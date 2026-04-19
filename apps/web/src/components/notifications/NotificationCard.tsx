@@ -1,6 +1,6 @@
 import { useEffect } from "react";
+import type { Notification } from "../../context/NotificationProvider";
 import { StatusIcon, getStatusColor } from "./NotificationIcon";
-import type { Notification } from "./NotificationProvider";
 
 const ACTION_CLASSES: Record<string, string> = {
 	default: "border-border text-secondary hover:text-primary hover:border-border-strong",

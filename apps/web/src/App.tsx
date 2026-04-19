@@ -1,8 +1,8 @@
 import type { AgentSummary } from "@omni-view/shared";
 import { useState } from "react";
+import { NotificationStack } from "./components/notifications/NotificationStack";
 import { DeviceProvider } from "./context/DeviceContext";
-import { NotificationProvider } from "./core/notifications/NotificationProvider";
-import { NotificationStack } from "./core/notifications/NotificationStack";
+import { NotificationProvider } from "./context/NotificationProvider";
 import { useNotifications } from "./hooks/useNotifications";
 import { DirectoryPage } from "./pages/DirectoryPage";
 import { ViewerPage } from "./pages/ViewerPage";
