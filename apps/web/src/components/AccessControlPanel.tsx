@@ -81,9 +81,7 @@ function EmptyState({ message }: { message: string }) {
 	return <p className="text-xs font-mono text-muted text-center py-6">{message}</p>;
 }
 
-// ─── WhitelistPanel ───────────────────────────────────────────────────────────
-
-export function WhitelistPanel() {
+export function AccessControlPanel() {
 	const { agentId, whitelistVersion } = useDevice();
 	const [tab, setTab] = useState<Tab>("allowed");
 

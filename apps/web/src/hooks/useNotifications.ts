@@ -3,7 +3,7 @@ import {
 	NotificationContext,
 	type NotificationContextType,
 	type NotificationStatus,
-} from "../core/notifications/NotificationProvider";
+} from "../context/NotificationProvider";
 
 export function useNotifications<S extends string = NotificationStatus>() {
 	const context = useContext(NotificationContext) as NotificationContextType<S> | undefined;
