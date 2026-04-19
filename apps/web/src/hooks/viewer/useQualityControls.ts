@@ -2,7 +2,7 @@
 
 import { QUALITY_PRESETS, QualityPreset } from "@omni-view/shared";
 import { useCallback, useEffect, useState } from "react";
-import { AgentSession } from "../../core/agent-ws";
+import { AgentSession } from "../../services/agent-ws";
 
 export function useQualityControls(session: AgentSession | null) {
 	const [activePreset, setActivePreset] = useState<QualityPreset | null>(null);

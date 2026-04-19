@@ -1,7 +1,7 @@
 // ─── Stream health (FPS + last-frame age) ────────────────────────────────────
 
 import { useEffect, useRef, useState } from "react";
-import { AgentSession } from "../../core/agent-ws";
+import { AgentSession } from "../../services/agent-ws";
 
 export function useStreamHealth(session: AgentSession | null) {
 	const frameTimesRef = useRef<number[]>([]);

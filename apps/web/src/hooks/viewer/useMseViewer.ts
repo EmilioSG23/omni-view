@@ -1,8 +1,8 @@
 // ─── H264 / fMP4 viewer via MediaSource ──────────────────────────────────────
 
 import { useEffect, useRef } from "react";
-import { AgentSession } from "../../core/agent-ws";
-import { isJpeg, isPng } from "../../core/identify-format";
+import { AgentSession } from "../../services/agent-ws";
+import { isJpeg, isPng } from "../../utils/identify-format";
 
 export function useMseViewer(
 	videoRef: React.RefObject<HTMLVideoElement | null>,
