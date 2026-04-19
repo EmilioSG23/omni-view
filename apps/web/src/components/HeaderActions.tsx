@@ -1,6 +1,6 @@
+import { GIT_REPO_URL } from "@/consts";
+import { GithubIcon } from "@/icons/Github";
 import type { ComponentType } from "react";
-import { GIT_REPO_URL } from "../consts";
-import { GithubIcon } from "../icons/Github";
 
 type Action = {
 	id: string;

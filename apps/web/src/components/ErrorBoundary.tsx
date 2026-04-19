@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Component } from "react";
 
 interface Props {
 	children: React.ReactNode;
@@ -14,7 +14,7 @@ interface State {
  * Top-level error boundary that catches unexpected render errors
  * and shows a minimal recovery UI instead of a blank screen.
  */
-export class ErrorBoundary extends React.Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
 	state: State = { hasError: false, error: null };
 
 	static getDerivedStateFromError(error: Error): State {

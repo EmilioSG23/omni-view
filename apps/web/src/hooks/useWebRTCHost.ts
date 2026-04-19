@@ -2,10 +2,10 @@
 // Handles signaling WebSocket, peer connections, capture state, and viewer list
 // for a browser device acting as a host agent.
 
+import { createSenderPeer, getSignalingUrl, sha256hex } from "@/core/webrtc";
+import { agentApi } from "@/services/agent-api";
 import type { ViewerInfo } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createSenderPeer, getSignalingUrl, sha256hex } from "../core/webrtc";
-import { agentApi } from "../services/agent-api";
 
 export type CaptureState = "idle" | "requesting" | "active" | "error";
 

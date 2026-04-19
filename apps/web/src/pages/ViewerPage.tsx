@@ -1,15 +1,16 @@
+import { StatusDot } from "@/components/StatusDot";
+import { ConnectForm } from "@/components/viewer/ConnectForm";
+import { ControlButton } from "@/components/viewer/ControlButton";
+import { QualityBar } from "@/components/viewer/QualityBar";
+import { ViewerHeader } from "@/components/viewer/ViewerHeader";
+import { WebRTCViewer } from "@/components/viewer/WebRTCViewer";
+import { useImageViewer } from "@/hooks/viewer/useImageViewer";
+import { useMseViewer } from "@/hooks/viewer/useMseViewer";
+import { useQualityControls } from "@/hooks/viewer/useQualityControls";
+import { useStreamHealth } from "@/hooks/viewer/useStreamHealth";
+import { AgentSession, type SessionState } from "@/services/agent-ws";
 import type { AgentSummary } from "@omni-view/shared";
 import { useEffect, useRef, useState } from "react";
-import { StatusDot } from "../components/StatusDot";
-import { ConnectForm } from "../components/viewer/ConnectForm";
-import { ControlButton } from "../components/viewer/ControlButton";
-import { QualityBar } from "../components/viewer/QualityBar";
-import { WebRTCViewer } from "../components/WebRTCViewer";
-import { useImageViewer } from "../hooks/viewer/useImageViewer";
-import { useMseViewer } from "../hooks/viewer/useMseViewer";
-import { useQualityControls } from "../hooks/viewer/useQualityControls";
-import { useStreamHealth } from "../hooks/viewer/useStreamHealth";
-import { AgentSession, type SessionState } from "../services/agent-ws";
 
 interface ViewerPageProps {
 	agent: AgentSummary;
@@ -107,24 +108,7 @@ export function ViewerPage({ agent, password, onBack }: ViewerPageProps) {
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
 			{/* Top bar */}
-			<header
-				role="banner"
-				className="h-header border-b border-border flex items-center px-5 gap-4 shrink-0"
-			>
-				<button
-					onClick={onBack}
-					aria-label="Back to directory"
-					className="flex items-center gap-2 text-secondary text-xs font-mono px-2 h-7 border border-border rounded cursor-pointer hover:text-primary hover:border-border-strong transition-[color,border-color] duration-120"
-				>
-					← back
-				</button>
-
-				<span className="font-mono font-semibold text-sm text-primary">
-					{agent.label ?? agent.agent_id}
-				</span>
-
-				<span className="flex-1" />
-
+			<ViewerHeader onBack={onBack} label={agent.label ?? agent.agent_id}>
 				{/* FPS / lag indicator */}
 				{sessionState === "streaming" && (
 					<span
@@ -147,8 +131,7 @@ export function ViewerPage({ agent, password, onBack }: ViewerPageProps) {
 						{STATE_LABEL[sessionState]}
 					</span>
 				</div>
-			</header>
-
+			</ViewerHeader>
 			{/* Main stage */}
 			<main
 				role="main"

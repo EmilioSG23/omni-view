@@ -12,3 +12,11 @@ export function formatAge(iso: string): string {
 	if (h < 24) return `${h}h ago`;
 	return `${Math.floor(h / 24)}d ago`;
 }
+
+/**
+ * Truncates a device/agent UUID for display: first 8 chars + ellipsis + last 6 chars.
+ * e.g. "a1b2c3d4…e5f6a7b8" (safe for IDs shorter than 18 chars — returned as-is).
+ */
+export function truncateDeviceId(id: string): string {
+	return id.length > 18 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id;
+}

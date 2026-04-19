@@ -1,12 +1,12 @@
+import { HeaderActions } from "@/components/HeaderActions";
+import { AccessControlPanel } from "@/components/panels/AccessControlPanel";
+import { AgentHistoryPanel } from "@/components/panels/AgentHistoryPanel";
+import { ConnectToAgentForm } from "@/components/panels/ConnectToAgentForm";
+import { ConnectedViewersList } from "@/components/panels/ConnectedViewersList";
+import { DevicePanel } from "@/components/panels/DevicePanel";
+import { useAgentHistory } from "@/hooks/useAgentHistory";
 import type { AgentSummary } from "@omni-view/shared";
 import { useCallback } from "react";
-import { AccessControlPanel } from "../components/AccessControlPanel";
-import { AgentHistoryPanel } from "../components/AgentHistoryPanel";
-import { ConnectToAgentForm } from "../components/ConnectToAgentForm";
-import { ConnectedViewersList } from "../components/ConnectedViewersList";
-import { DevicePanel } from "../components/DevicePanel";
-import { HeaderActions } from "../components/HeaderActions";
-import { useAgentHistory } from "../hooks/useAgentHistory";
 
 interface DirectoryPageProps {
 	onConnect: (agent: AgentSummary, password: string) => void;

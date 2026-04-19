@@ -1,14 +1,11 @@
+import type { CaptureState } from "@/context/DeviceContext";
+import { useDevice } from "@/context/DeviceContext";
+import { EyeIcon } from "@/icons/EyeIcon";
+import { EyeOffIcon } from "@/icons/EyeOffIcon";
+import { RefreshIcon } from "@/icons/RefreshIcon";
+import { truncateDeviceId } from "@/utils/format";
 import { AGENT_PASSWORD_MAX_LENGTH, generateAgentPassword } from "@omni-view/shared";
 import { useState } from "react";
-import type { CaptureState } from "../context/DeviceContext";
-import { useDevice } from "../context/DeviceContext";
-import { EyeIcon } from "../icons/EyeIcon";
-import { EyeOffIcon } from "../icons/EyeOffIcon";
-import { RefreshIcon } from "../icons/RefreshIcon";
-
-function truncateId(id: string): string {
-	return id.length > 18 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id;
-}
 
 function CaptureStateBadge({ state }: { state: CaptureState }) {
 	const config = {
@@ -100,7 +97,7 @@ export function DevicePanel() {
 					className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-elevated hover:bg-overlay transition-colors text-left group"
 				>
 					<span className="font-mono text-xs text-primary truncate flex-1">
-						{truncateId(agentId)}
+						{truncateDeviceId(agentId)}
 					</span>
 					<span className="text-muted group-hover:text-accent text-xs shrink-0">
 						{copied ? "✓" : "⎘"}
@@ -124,8 +121,8 @@ export function DevicePanel() {
 						<button
 							type="button"
 							onClick={() => setShowPassword((s) => !s)}
-							aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-							title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+							aria-label={showPassword ? "Hide password" : "Show password"}
+							title={showPassword ? "Hide password" : "Show password"}
 							className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center px-2 py-1.5 rounded-md bg-transparent hover:bg-overlay text-muted text-xs transition-colors focus:outline-none"
 						>
 							{showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
@@ -135,7 +132,7 @@ export function DevicePanel() {
 						type="button"
 						onClick={handleRegenerate}
 						disabled={saving}
-						title="Regenerar contraseña"
+						title="Regenerate password"
 						className="px-2 py-1.5 rounded-lg bg-elevated hover:bg-overlay text-muted text-xs font-medium transition-colors"
 					>
 						<RefreshIcon className="w-4 h-4" />

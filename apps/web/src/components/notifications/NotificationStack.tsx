@@ -1,4 +1,4 @@
-import type { Notification } from "../../context/NotificationProvider";
+import type { Notification } from "@/context/NotificationProvider";
 import { NotificationCard } from "./NotificationCard";
 
 export function NotificationStack({

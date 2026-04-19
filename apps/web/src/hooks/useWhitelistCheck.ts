@@ -1,7 +1,7 @@
+import { getSignalingUrl } from "@/core/webrtc";
+import { agentApi } from "@/services/agent-api";
+import { getDeviceId } from "@/utils/device-identity";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getSignalingUrl } from "../core/webrtc";
-import { agentApi } from "../services/agent-api";
-import { getDeviceId } from "../utils/device-identity";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

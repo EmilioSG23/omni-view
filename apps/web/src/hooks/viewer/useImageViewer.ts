@@ -1,8 +1,8 @@
 // ─── Image fallback viewer (JPEG / PNG) ──────────────────────────────────────
 
+import { AgentSession } from "@/services/agent-ws";
+import { isFmpFrame } from "@/utils/identify-format";
 import { useEffect } from "react";
-import { AgentSession } from "../../services/agent-ws";
-import { isFmpFrame } from "../../utils/identify-format";
 
 export function useImageViewer(
 	canvasRef: React.RefObject<HTMLCanvasElement | null>,

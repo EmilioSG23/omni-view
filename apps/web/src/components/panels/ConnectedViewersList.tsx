@@ -1,20 +1,15 @@
+import { useDevice } from "@/context/DeviceContext";
+import { formatAge, truncateDeviceId } from "@/utils/format";
 import type { ViewerInfo } from "@omni-view/shared";
-import { useDevice } from "../context/DeviceContext";
 
 function ViewerRow({ viewer, onKick }: { viewer: ViewerInfo; onKick: () => void }) {
-	const connectedAgo = (() => {
-		const diff = Date.now() - new Date(viewer.connected_at).getTime();
-		const m = Math.floor(diff / 60_000);
-		if (m < 1) return "just now";
-		if (m < 60) return `${m}m ago`;
-		return `${Math.floor(m / 60)}h ago`;
-	})();
+	const connectedAgo = formatAge(viewer.connected_at);
 
 	return (
 		<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-elevated group">
 			<div className="flex-1 min-w-0">
 				<p className="text-xs text-primary truncate">
-					{viewer.label ?? viewer.viewer_id.slice(0, 12)}
+					{viewer.label ?? truncateDeviceId(viewer.viewer_id)}
 				</p>
 				<p className="text-xs text-muted">{connectedAgo}</p>
 			</div>

@@ -1,72 +1,10 @@
+import { PasswordPrompt } from "@/components/PasswordPrompt";
+import type { AgentHistoryEntry } from "@/hooks/useAgentHistory";
+import { useModal } from "@/hooks/useModal";
+import { agentApi } from "@/services/agent-api";
+import { formatAge, truncateDeviceId } from "@/utils/format";
 import type { AgentSummary } from "@omni-view/shared";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import type { AgentHistoryEntry } from "../hooks/useAgentHistory";
-import { useModal } from "../hooks/useModal";
-import { agentApi } from "../services/agent-api";
-import { formatAge } from "../utils/format";
-
-// ─── Password modal (same pattern as ConnectToAgentForm) ─────────────────────
-
-function PasswordPrompt({
-	agentId,
-	onSubmit,
-}: {
-	agentId: string;
-	onSubmit: (password: string) => void;
-}) {
-	const [password, setPassword] = useState("");
-	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
-
-	function handleSubmit(e: FormEvent) {
-		e.preventDefault();
-		if (!password) {
-			setError("Password is required.");
-			return;
-		}
-		setError(null);
-		setLoading(true);
-		try {
-			onSubmit(password);
-		} finally {
-			setLoading(false);
-		}
-	}
-
-	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
-			<div>
-				<h3 className="text-sm font-semibold text-primary">Connect to Agent</h3>
-				<p className="text-xs text-muted mt-0.5 font-mono truncate">{agentId}</p>
-			</div>
-			<div className="flex flex-col gap-1">
-				<label className="text-xs text-muted" htmlFor="history-agent-password">
-					Password
-				</label>
-				<input
-					id="history-agent-password"
-					type="password"
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-					autoFocus
-					placeholder="Enter session password…"
-					className="w-full px-3 py-2 rounded-lg bg-elevated border border-border focus:border-accent focus:outline-none text-sm font-mono text-primary placeholder:text-muted"
-				/>
-			</div>
-			{error && <p className="text-error text-xs">{error}</p>}
-			<button
-				type="submit"
-				disabled={loading}
-				className="w-full py-2 rounded-lg bg-accent text-base font-semibold text-sm transition-opacity disabled:opacity-50"
-			>
-				{loading ? "Connecting…" : "Connect"}
-			</button>
-		</form>
-	);
-}
-
-// ─── History row ──────────────────────────────────────────────────────────────
-
+import { useCallback, useEffect, useRef, useState } from "react";
 function HistoryRow({
 	entry,
 	connecting,
@@ -82,8 +20,8 @@ function HistoryRow({
 	onConnect: () => void;
 	onRemove: () => void;
 }) {
-	const displayName = entry.label ?? `${entry.agent_id.slice(0, 8)}…${entry.agent_id.slice(-5)}`;
-	const shortId = `${entry.agent_id.slice(0, 8)}…${entry.agent_id.slice(-5)}`;
+	const displayName = entry.label ?? truncateDeviceId(entry.agent_id);
+	const shortId = truncateDeviceId(entry.agent_id);
 	const ago = formatAge(entry.last_connected_at);
 	const mode = entry.capture_mode ?? "native";
 

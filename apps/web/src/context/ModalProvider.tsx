@@ -1,5 +1,5 @@
+import { Modal } from "@/components/Modal";
 import { type ReactNode, useCallback, useState } from "react";
-import { Modal } from "../components/Modal";
 import { ModalContext } from "./ModalContext";
 
 interface ModalState {

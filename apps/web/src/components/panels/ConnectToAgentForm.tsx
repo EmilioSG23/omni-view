@@ -1,71 +1,11 @@
+import { PasswordPrompt } from "@/components/PasswordPrompt";
+import { useModal } from "@/hooks/useModal";
+import { agentApi } from "@/services/agent-api";
 import type { AgentSummary } from "@omni-view/shared";
 import { type FormEvent, useState } from "react";
-import { useModal } from "../hooks/useModal";
-import { agentApi } from "../services/agent-api";
 
 interface ConnectToAgentFormProps {
 	onConnect: (agent: AgentSummary, password: string) => void;
-}
-
-/** Compact password prompt rendered inside the modal. */
-function PasswordPrompt({
-	agentId,
-	onSubmit,
-}: {
-	agentId: string;
-	onSubmit: (password: string) => void;
-}) {
-	const [password, setPassword] = useState("");
-	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
-
-	async function handleSubmit(e: FormEvent) {
-		e.preventDefault();
-		if (!password) {
-			setError("Password is required.");
-			return;
-		}
-		setError(null);
-		setLoading(true);
-		try {
-			onSubmit(password);
-		} catch {
-			setError("Failed to connect.");
-		} finally {
-			setLoading(false);
-		}
-	}
-
-	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
-			<div>
-				<h3 className="text-sm font-semibold text-primary">Connect to Agent</h3>
-				<p className="text-xs text-muted mt-0.5 font-mono truncate">{agentId}</p>
-			</div>
-			<div className="flex flex-col gap-1">
-				<label className="text-xs text-muted" htmlFor="agent-password">
-					Password
-				</label>
-				<input
-					id="agent-password"
-					type="password"
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-					autoFocus
-					placeholder="Enter session password…"
-					className="w-full px-3 py-2 rounded-lg bg-elevated border border-border focus:border-accent focus:outline-none text-sm font-mono text-primary placeholder:text-muted"
-				/>
-			</div>
-			{error && <p className="text-error text-xs">{error}</p>}
-			<button
-				type="submit"
-				disabled={loading}
-				className="w-full py-2 rounded-lg bg-accent text-base font-semibold text-sm transition-opacity disabled:opacity-50"
-			>
-				{loading ? "Connecting…" : "Connect"}
-			</button>
-		</form>
-	);
 }
 
 export function ConnectToAgentForm({ onConnect }: ConnectToAgentFormProps) {

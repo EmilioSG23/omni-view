@@ -1,15 +1,15 @@
+import { StatusDot } from "@/components/StatusDot";
+import { agentApi } from "@/services/agent-api";
+import { formatAge } from "@/utils/format";
 import type { AgentSummary } from "@omni-view/shared";
-import { useEffect, useState } from "react";
-import { agentApi } from "../services/agent-api";
-import { formatAge } from "../utils/format";
-import { StatusDot } from "./StatusDot";
+import { memo, useEffect, useState } from "react";
 
 interface AgentCardProps {
 	agent: AgentSummary;
 	onConnect: (agent: AgentSummary) => void;
 }
 
-export function AgentCard({ agent, onConnect }: AgentCardProps) {
+export const AgentCard = memo(function AgentCard({ agent, onConnect }: AgentCardProps) {
 	const [online, setOnline] = useState(false);
 
 	useEffect(() => {
@@ -59,4 +59,4 @@ export function AgentCard({ agent, onConnect }: AgentCardProps) {
 			</div>
 		</article>
 	);
-}
+});

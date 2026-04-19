@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import type { Notification } from "../../context/NotificationProvider";
+import type { Notification } from "@/context/NotificationProvider";
+import { memo, useEffect } from "react";
 import { StatusIcon, getStatusColor } from "./NotificationIcon";
 
 const ACTION_CLASSES: Record<string, string> = {
@@ -8,7 +8,7 @@ const ACTION_CLASSES: Record<string, string> = {
 	warn: "border-accent/40 text-accent hover:bg-accent/10",
 };
 
-export function NotificationCard({
+export const NotificationCard = memo(function NotificationCard({
 	notification,
 	onRemove,
 }: {
@@ -64,4 +64,4 @@ export function NotificationCard({
 			)}
 		</div>
 	);
-}
+});

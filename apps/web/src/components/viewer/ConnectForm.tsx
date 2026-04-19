@@ -1,8 +1,10 @@
 // ─── Connect form with whitelist status ──────────────────────────────────────
 
-import { AgentSummary } from "@omni-view/shared";
+import { useWhitelistCheck } from "@/hooks/useWhitelistCheck";
+import { SpinnerIcon } from "@/icons/SpinnerIcon";
+import { truncateDeviceId } from "@/utils/format";
+import type { AgentSummary } from "@omni-view/shared";
 import { useState } from "react";
-import { useWhitelistCheck } from "../../hooks/useWhitelistCheck";
 
 interface ConnectFormProps {
 	agent: AgentSummary;
@@ -58,7 +60,7 @@ export function ConnectForm({ agent, onSubmit }: ConnectFormProps) {
 						className="font-mono text-xs text-secondary overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0"
 						title={deviceId}
 					>
-						{deviceId.slice(0, 8)}…{deviceId.slice(-4)}
+						{truncateDeviceId(deviceId)}
 					</span>
 					<button
 						type="button"
@@ -77,16 +79,7 @@ export function ConnectForm({ agent, onSubmit }: ConnectFormProps) {
 					)}
 					{status === "pending" && (
 						<span className="text-xs text-accent font-mono flex items-center gap-1.5">
-							<svg
-								aria-hidden="true"
-								className="inline-block w-3 h-3 animate-spin shrink-0"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2.5"
-							>
-								<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-							</svg>
+							<SpinnerIcon className="inline-block w-3 h-3 shrink-0" />
 							waiting for host approval…
 						</span>
 					)}

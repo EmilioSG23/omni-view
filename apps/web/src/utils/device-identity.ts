@@ -1,4 +1,4 @@
-import { DEVICE_ID_STORAGE_KEY } from "../consts";
+import { DEVICE_ID_STORAGE_KEY } from "@/consts";
 
 const STORAGE_KEY = DEVICE_ID_STORAGE_KEY;
 

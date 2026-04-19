@@ -1,5 +1,5 @@
+import { getDeviceId } from "@/utils/device-identity";
 import { useState } from "react";
-import { getDeviceId } from "../utils/device-identity";
 
 /**
  * Returns this browser device's stable UUID, generating one on first use.

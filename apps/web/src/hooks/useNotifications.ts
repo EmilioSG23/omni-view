@@ -1,9 +1,9 @@
-import { useContext } from "react";
 import {
 	NotificationContext,
 	type NotificationContextType,
 	type NotificationStatus,
-} from "../context/NotificationProvider";
+} from "@/context/NotificationProvider";
+import { useContext } from "react";
 
 export function useNotifications<S extends string = NotificationStatus>() {
 	const context = useContext(NotificationContext) as NotificationContextType<S> | undefined;
