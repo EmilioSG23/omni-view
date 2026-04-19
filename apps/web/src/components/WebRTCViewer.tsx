@@ -3,7 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createReceiverPeer, getSignalingUrl } from "../core/webrtc";
 import { getDeviceId } from "../utils/device-identity";
 
-type ConnectionState = "idle" | "connecting" | "connected" | "disconnected" | "rejected";
+type ConnectionState =
+	| "idle"
+	| "connecting"
+	| "pending"
+	| "connected"
+	| "disconnected"
+	| "rejected";
 
 interface WebRTCViewerProps {
 	agent: AgentSummary;
@@ -103,12 +109,27 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 
 				const msgEvent = msg.event as string | undefined;
 
+				if (msgEvent === "viewer:pending") {
+					setConnectionState("pending");
+					return;
+				}
+
+				if (msgEvent === "viewer:approved") {
+					// Host approved — wait for webrtc:offer to arrive.
+					setConnectionState("connecting");
+					return;
+				}
+
 				if (msgEvent === "viewer:rejected") {
 					const reason = msg.reason as string;
 					setError(
 						reason === "invalid_password"
 							? "Incorrect password."
-							: "Host is not available. Start screen sharing first.",
+							: reason === "blacklisted"
+								? "Access denied. The host has blocked this device."
+								: reason === "denied"
+									? "Access denied by the host."
+									: "Host is not available. Start screen sharing first.",
 					);
 					setConnectionState("rejected");
 					ws.close();
@@ -152,7 +173,9 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 			};
 
 			ws.onclose = () => {
-				setConnectionState((s) => (s === "connected" || s === "connecting" ? "disconnected" : s));
+				setConnectionState((s) =>
+					s === "connected" || s === "connecting" || s === "pending" ? "disconnected" : s,
+				);
 			};
 		},
 		[agent.agent_id, viewerId],
@@ -268,6 +291,7 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 
 	const isActive = connectionState === "connected";
 	const isConnecting = connectionState === "connecting";
+	const isPending = connectionState === "pending";
 
 	return (
 		<div
@@ -297,6 +321,12 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 							<>
 								<div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
 								<p className="text-sm">Connecting to agent…</p>
+							</>
+						)}
+						{isPending && (
+							<>
+								<div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+								<p className="text-sm">Waiting for host approval…</p>
 							</>
 						)}
 						{connectionState === "idle" && (

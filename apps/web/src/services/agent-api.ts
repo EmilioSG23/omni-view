@@ -1,7 +1,9 @@
 import type {
+	AddToBlacklistDto,
 	AddToWhitelistDto,
 	AgentStatusResponse,
 	AgentSummary,
+	BlacklistEntry,
 	CheckWhitelistResponse,
 	ViewerInfo,
 	WhitelistEntry,
@@ -79,6 +81,47 @@ export const agentApi = {
 			{
 				method: "DELETE",
 			},
+		);
+	},
+
+	/** Check if a device is on the agent's blacklist. */
+	checkBlacklist(agentId: string, deviceId: string): Promise<{ blocked: boolean }> {
+		return fetchJson(
+			`/agents/${encodeURIComponent(agentId)}/blacklist/check?device_id=${encodeURIComponent(deviceId)}`,
+		);
+	},
+
+	/** List all whitelist entries for an agent. */
+	getWhitelist(agentId: string): Promise<WhitelistEntry[]> {
+		return fetchJson(`/agents/${encodeURIComponent(agentId)}/whitelist`);
+	},
+
+	/** Remove a device from the agent's whitelist. */
+	removeFromWhitelist(agentId: string, deviceId: string): Promise<void> {
+		return fetchJson(
+			`/agents/${encodeURIComponent(agentId)}/whitelist/${encodeURIComponent(deviceId)}`,
+			{ method: "DELETE" },
+		);
+	},
+
+	/** List all blacklist entries for an agent. */
+	getBlacklist(agentId: string): Promise<BlacklistEntry[]> {
+		return fetchJson(`/agents/${encodeURIComponent(agentId)}/blacklist`);
+	},
+
+	/** Add a device to the agent's blacklist. */
+	addToBlacklist(agentId: string, dto: AddToBlacklistDto): Promise<BlacklistEntry> {
+		return fetchJson(`/agents/${encodeURIComponent(agentId)}/blacklist`, {
+			method: "POST",
+			body: JSON.stringify(dto),
+		});
+	},
+
+	/** Remove a device from the agent's blacklist. */
+	removeFromBlacklist(agentId: string, deviceId: string): Promise<void> {
+		return fetchJson(
+			`/agents/${encodeURIComponent(agentId)}/blacklist/${encodeURIComponent(deviceId)}`,
+			{ method: "DELETE" },
 		);
 	},
 };

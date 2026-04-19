@@ -34,9 +34,11 @@ export function ConnectForm({ agent, onSubmit }: ConnectFormProps) {
 	const wlBorderClass =
 		status === "allowed"
 			? "border-success"
-			: status === "denied"
+			: status === "denied" || status === "blacklisted"
 				? "border-error"
-				: "border-border";
+				: status === "pending"
+					? "border-accent"
+					: "border-border";
 
 	return (
 		<form
@@ -73,10 +75,23 @@ export function ConnectForm({ agent, onSubmit }: ConnectFormProps) {
 					{status === "allowed" && (
 						<span className="text-xs text-success font-mono">✓ device authorized</span>
 					)}
-					{status === "requested" && (
-						<span className="text-xs text-accent font-mono">
-							⧖ access requested — share your device ID with the agent operator
+					{status === "pending" && (
+						<span className="text-xs text-accent font-mono flex items-center gap-1.5">
+							<svg
+								aria-hidden="true"
+								className="inline-block w-3 h-3 animate-spin shrink-0"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2.5"
+							>
+								<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+							</svg>
+							waiting for host approval…
 						</span>
+					)}
+					{status === "blacklisted" && (
+						<span className="text-xs text-error font-mono">⊘ device blocked by host</span>
 					)}
 					{status === "error" && (
 						<span className="text-xs text-warn font-mono">
@@ -127,7 +142,8 @@ export function ConnectForm({ agent, onSubmit }: ConnectFormProps) {
 
 			<button
 				type="submit"
-				className="h-9 bg-accent text-inverse font-semibold text-sm rounded tracking-[0.04em] cursor-pointer hover:opacity-85 transition-opacity duration-120"
+				disabled={status === "pending" || status === "blacklisted"}
+				className="h-9 bg-accent text-inverse font-semibold text-sm rounded tracking-[0.04em] cursor-pointer hover:opacity-85 transition-opacity duration-120 disabled:opacity-40 disabled:cursor-not-allowed"
 			>
 				Connect
 			</button>

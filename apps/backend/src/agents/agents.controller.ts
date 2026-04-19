@@ -14,7 +14,9 @@ import { hashPassword } from "../common/utils/crypto";
 import { WsGateway } from "../ws/ws.gateway";
 import { AgentClientService } from "./agent-client.service";
 import {
+	AddToBlacklistDto,
 	AddToWhitelistDto,
+	CheckBlacklistQueryDto,
 	CheckWhitelistQueryDto,
 	ConnectAgentDto,
 	RegisterAgentDto,
@@ -149,5 +151,34 @@ export class AgentsController {
 	@HttpCode(HttpStatus.NO_CONTENT)
 	kickViewer(@Param("id") agentId: string, @Param("viewerId") viewerId: string): void {
 		this.wsGateway.kickViewer(agentId, viewerId);
+	}
+
+	/** Add a device to an agent's blacklist. */
+	@Post(":id/blacklist")
+	addToBlacklist(@Param("id") agentId: string, @Body() dto: AddToBlacklistDto) {
+		return this.agentsService.addToBlacklist(agentId, dto);
+	}
+
+	/** Remove a device from an agent's blacklist. */
+	@Delete(":id/blacklist/:deviceId")
+	@HttpCode(HttpStatus.NO_CONTENT)
+	async removeFromBlacklist(
+		@Param("id") agentId: string,
+		@Param("deviceId") deviceId: string,
+	): Promise<void> {
+		await this.agentsService.removeFromBlacklist(agentId, deviceId);
+	}
+
+	/** List all blacklisted devices for an agent. */
+	@Get(":id/blacklist")
+	getBlacklist(@Param("id") agentId: string) {
+		return this.agentsService.getBlacklist(agentId);
+	}
+
+	/** Check whether a specific device is blacklisted for an agent. */
+	@Get(":id/blacklist/check")
+	async checkBlacklist(@Param("id") agentId: string, @Query() query: CheckBlacklistQueryDto) {
+		const blocked = await this.agentsService.isBlacklisted(agentId, query.device_id);
+		return { blocked };
 	}
 }

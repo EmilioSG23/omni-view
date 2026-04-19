@@ -1,5 +1,5 @@
-import { WsGateway } from "./ws.gateway";
 import { WebSocket } from "ws";
+import { WsGateway } from "./ws.gateway";
 
 /** Minimal fake WebSocket — only the surface WsGateway touches.
  * Must include `OPEN` as an instance property because the gateway checks
@@ -17,7 +17,19 @@ describe("WsGateway", () => {
 	let gateway: WsGateway;
 
 	beforeEach(() => {
-		gateway = new WsGateway();
+		// Provide a minimal mock AgentsService so the gateway can be constructed
+		const mockAgentsService = {
+			isBlacklisted: jest.fn(),
+			isWhitelisted: jest.fn(),
+			addToWhitelist: jest.fn(),
+			addToBlacklist: jest.fn(),
+			removeFromWhitelist: jest.fn(),
+			removeFromBlacklist: jest.fn(),
+			getWhitelist: jest.fn(),
+			getBlacklist: jest.fn(),
+		} as unknown as any;
+
+		gateway = new WsGateway(mockAgentsService);
 	});
 
 	describe("handleSubscribe", () => {
@@ -111,9 +123,7 @@ describe("WsGateway", () => {
 
 		it("does nothing when there are no subscribers for the agentId", () => {
 			// Should not throw on an empty or non-matching map
-			expect(() =>
-				gateway.notifyAgentSubscribers("unknown-agent", { type: "ping" }),
-			).not.toThrow();
+			expect(() => gateway.notifyAgentSubscribers("unknown-agent", { type: "ping" })).not.toThrow();
 		});
 	});
 });

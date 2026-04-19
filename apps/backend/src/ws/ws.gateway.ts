@@ -1,3 +1,4 @@
+import { Inject, forwardRef } from "@nestjs/common";
 import {
 	ConnectedSocket,
 	MessageBody,
@@ -9,6 +10,7 @@ import {
 } from "@nestjs/websockets";
 import { createHash } from "crypto";
 import { Server, WebSocket } from "ws";
+import { AgentsService } from "../agents/agents.service";
 
 interface ViewerMeta {
 	agentId: string;
@@ -23,8 +25,24 @@ interface ViewerInfo {
 	connected_at: string;
 }
 
+interface PendingRequest {
+	/** "access" = came from access:request; "viewer" = came from viewer:request. */
+	type: "access" | "viewer";
+	agentId: string;
+	deviceId: string;
+	label?: string;
+	viewerWs: WebSocket;
+	/** Only set when type === "viewer". */
+	viewerId?: string;
+}
+
 @WebSocketGateway({ path: "/api/ws" })
 export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+	constructor(
+		@Inject(forwardRef(() => AgentsService))
+		private readonly agentsService: AgentsService,
+	) {}
+
 	@WebSocketServer()
 	server!: Server;
 
@@ -38,6 +56,11 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	/** WebRTC: viewer WebSocket → viewer metadata. */
 	private readonly viewerSockets = new Map<WebSocket, ViewerMeta>();
 
+	/** Access requests: requestId → pending request metadata. */
+	private readonly pendingRequests = new Map<string, PendingRequest>();
+	/** Access requests: viewer WebSocket → requestId (for cleanup on disconnect). */
+	private readonly pendingBySocket = new Map<WebSocket, string>();
+
 	private sendTo(ws: WebSocket, payload: Record<string, unknown>): void {
 		if (ws.readyState === WebSocket.OPEN) {
 			ws.send(JSON.stringify(payload));
@@ -50,6 +73,20 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	handleDisconnect(client: WebSocket): void {
 		this.subscriptions.delete(client);
+
+		// Clean up any pending access/viewer request for this viewer.
+		const pendingRequestId = this.pendingBySocket.get(client);
+		if (pendingRequestId) {
+			const pending = this.pendingRequests.get(pendingRequestId);
+			if (pending) {
+				const hostWs = this.hostSockets.get(pending.agentId);
+				if (hostWs) {
+					this.sendTo(hostWs, { event: "access:cancelled", requestId: pendingRequestId });
+				}
+				this.pendingRequests.delete(pendingRequestId);
+			}
+			this.pendingBySocket.delete(client);
+		}
 
 		// Clean up if disconnected client was a host.
 		for (const [agentId, hostWs] of this.hostSockets) {
@@ -100,16 +137,25 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		@ConnectedSocket() client: WebSocket,
 		@MessageBody() payload: { agentId: string; passwordHash: string },
 	): void {
+		console.log("[WS] host:join received, agentId:", payload.agentId);
 		this.hostSockets.set(payload.agentId, client);
 		this.hostPasswords.set(payload.agentId, payload.passwordHash);
+		console.log("[WS] hostSockets keys:", [...this.hostSockets.keys()]);
 	}
 
 	/** Viewer requests to watch a browser-captured agent. */
 	@SubscribeMessage("viewer:request")
-	handleViewerRequest(
+	async handleViewerRequest(
 		@ConnectedSocket() client: WebSocket,
 		@MessageBody() payload: { agentId: string; viewerId: string; password: string; label?: string },
-	): void {
+	): Promise<void> {
+		console.log(
+			"[WS] viewer:request received, agentId:",
+			payload.agentId,
+			"viewerId:",
+			payload.viewerId,
+		);
+		console.log("[WS] hostSockets keys at request time:", [...this.hostSockets.keys()]);
 		const storedHash = this.hostPasswords.get(payload.agentId);
 		if (storedHash) {
 			const attemptHash = createHash("sha256").update(payload.password).digest("hex");
@@ -119,25 +165,190 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			}
 		}
 
+		// Reject blacklisted viewers immediately.
+		const isBlocked = await this.agentsService
+			.isBlacklisted(payload.agentId, payload.viewerId)
+			.catch(() => false);
+		if (isBlocked) {
+			this.sendTo(client, { event: "viewer:rejected", reason: "blacklisted" });
+			return;
+		}
+
 		const hostWs = this.hostSockets.get(payload.agentId);
 		if (!hostWs) {
 			this.sendTo(client, { event: "viewer:rejected", reason: "host_not_available" });
 			return;
 		}
 
-		this.viewerSockets.set(client, {
+		// If the viewer is already whitelisted, let them in directly.
+		const isAllowed = await this.agentsService
+			.isWhitelisted(payload.agentId, payload.viewerId)
+			.catch(() => false);
+		if (isAllowed) {
+			this.viewerSockets.set(client, {
+				agentId: payload.agentId,
+				viewerId: payload.viewerId,
+				label: payload.label,
+				connectedAt: new Date().toISOString(),
+			});
+			this.sendTo(hostWs, {
+				event: "viewer:joined",
+				viewerId: payload.viewerId,
+				label: payload.label,
+				agentId: payload.agentId,
+			});
+			return;
+		}
+
+		// Viewer is not whitelisted — ask the host for approval.
+		const requestId = `viewer-${payload.viewerId}-${Date.now().toString(36)}`;
+		this.pendingRequests.set(requestId, {
+			type: "viewer",
 			agentId: payload.agentId,
+			deviceId: payload.viewerId,
 			viewerId: payload.viewerId,
 			label: payload.label,
-			connectedAt: new Date().toISOString(),
+			viewerWs: client,
 		});
+		this.pendingBySocket.set(client, requestId);
+
+		this.sendTo(client, { event: "viewer:pending", requestId });
+		this.sendTo(hostWs, {
+			event: "access:requested",
+			requestId,
+			deviceId: payload.viewerId,
+			label: payload.label,
+		});
+	}
+
+	/** Viewer sends an access request to the host (whitelist-gated flow). */
+	@SubscribeMessage("access:request")
+	async handleAccessRequest(
+		@ConnectedSocket() client: WebSocket,
+		@MessageBody()
+		payload: { requestId: string; agentId: string; deviceId: string; label?: string },
+	): Promise<void> {
+		// If already blacklisted, deny immediately.
+		const isBlocked = await this.agentsService
+			.isBlacklisted(payload.agentId, payload.deviceId)
+			.catch(() => false);
+		if (isBlocked) {
+			this.sendTo(client, {
+				event: "access:denied",
+				requestId: payload.requestId,
+				blacklisted: true,
+			});
+			return;
+		}
+
+		// If already whitelisted, grant immediately.
+		const isAllowed = await this.agentsService
+			.isWhitelisted(payload.agentId, payload.deviceId)
+			.catch(() => false);
+		if (isAllowed) {
+			this.sendTo(client, { event: "access:granted", requestId: payload.requestId });
+			return;
+		}
+
+		const hostWs = this.hostSockets.get(payload.agentId);
+		if (!hostWs) {
+			this.sendTo(client, {
+				event: "access:denied",
+				requestId: payload.requestId,
+				reason: "host_not_available",
+			});
+			return;
+		}
+
+		this.pendingRequests.set(payload.requestId, {
+			type: "access",
+			agentId: payload.agentId,
+			deviceId: payload.deviceId,
+			label: payload.label,
+			viewerWs: client,
+		});
+		this.pendingBySocket.set(client, payload.requestId);
 
 		this.sendTo(hostWs, {
-			event: "viewer:joined",
-			viewerId: payload.viewerId,
+			event: "access:requested",
+			requestId: payload.requestId,
+			deviceId: payload.deviceId,
 			label: payload.label,
-			agentId: payload.agentId,
 		});
+	}
+
+	/** Host grants a pending access request. */
+	@SubscribeMessage("access:grant")
+	async handleAccessGrant(
+		@ConnectedSocket() _client: WebSocket,
+		@MessageBody() payload: { requestId: string; agentId: string },
+	): Promise<void> {
+		const pending = this.pendingRequests.get(payload.requestId);
+		if (!pending) return;
+
+		this.pendingRequests.delete(payload.requestId);
+		this.pendingBySocket.delete(pending.viewerWs);
+
+		// Auto-whitelist the device.
+		await this.agentsService
+			.addToWhitelist(payload.agentId, { device_id: pending.deviceId, label: pending.label })
+			.catch(() => null);
+
+		if (pending.type === "viewer") {
+			// Complete the viewer:request join now that the host approved.
+			const hostWs = this.hostSockets.get(pending.agentId);
+			if (!hostWs) {
+				this.sendTo(pending.viewerWs, { event: "viewer:rejected", reason: "host_not_available" });
+				return;
+			}
+			this.viewerSockets.set(pending.viewerWs, {
+				agentId: pending.agentId,
+				viewerId: pending.viewerId!,
+				label: pending.label,
+				connectedAt: new Date().toISOString(),
+			});
+			this.sendTo(pending.viewerWs, { event: "viewer:approved", requestId: payload.requestId });
+			this.sendTo(hostWs, {
+				event: "viewer:joined",
+				viewerId: pending.viewerId,
+				label: pending.label,
+				agentId: pending.agentId,
+			});
+		} else {
+			this.sendTo(pending.viewerWs, { event: "access:granted", requestId: payload.requestId });
+		}
+	}
+
+	/** Host denies a pending access request. */
+	@SubscribeMessage("access:deny")
+	async handleAccessDeny(
+		@ConnectedSocket() _client: WebSocket,
+		@MessageBody() payload: { requestId: string; agentId: string; blacklist?: boolean },
+	): Promise<void> {
+		const pending = this.pendingRequests.get(payload.requestId);
+		if (!pending) return;
+
+		this.pendingRequests.delete(payload.requestId);
+		this.pendingBySocket.delete(pending.viewerWs);
+
+		if (payload.blacklist) {
+			await this.agentsService
+				.addToBlacklist(payload.agentId, { device_id: pending.deviceId, label: pending.label })
+				.catch(() => null);
+		}
+
+		if (pending.type === "viewer") {
+			this.sendTo(pending.viewerWs, {
+				event: "viewer:rejected",
+				reason: payload.blacklist ? "blacklisted" : "denied",
+			});
+		} else {
+			this.sendTo(pending.viewerWs, {
+				event: "access:denied",
+				requestId: payload.requestId,
+				blacklisted: !!payload.blacklist,
+			});
+		}
 	}
 
 	/** Host sends SDP offer to a specific viewer. */

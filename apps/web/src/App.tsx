@@ -1,13 +1,17 @@
 import type { AgentSummary } from "@omni-view/shared";
 import { useState } from "react";
 import { DeviceProvider } from "./context/DeviceContext";
+import { NotificationProvider } from "./core/notifications/NotificationProvider";
+import { NotificationStack } from "./core/notifications/NotificationStack";
+import { useNotifications } from "./hooks/useNotifications";
 import { DirectoryPage } from "./pages/DirectoryPage";
 import { ViewerPage } from "./pages/ViewerPage";
 
 type Route = { name: "directory" } | { name: "viewer"; agent: AgentSummary; password?: string };
 
-export default function App() {
+function AppInner() {
 	const [route, setRoute] = useState<Route>({ name: "directory" });
+	const { notifications, removeNotification } = useNotifications();
 
 	return (
 		<DeviceProvider>
@@ -22,6 +26,15 @@ export default function App() {
 					onConnect={(agent, password) => setRoute({ name: "viewer", agent, password })}
 				/>
 			)}
+			<NotificationStack notifications={notifications} onRemove={removeNotification} />
 		</DeviceProvider>
+	);
+}
+
+export default function App() {
+	return (
+		<NotificationProvider>
+			<AppInner />
+		</NotificationProvider>
 	);
 }

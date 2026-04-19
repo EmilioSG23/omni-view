@@ -9,15 +9,28 @@ import { agentApi } from "../services/agent-api";
 
 export type CaptureState = "idle" | "requesting" | "active" | "error";
 
+export interface UseWebRTCHostOptions {
+	onAccessRequested?: (requestId: string, deviceId: string, label?: string) => void;
+}
+
 export interface UseWebRTCHostResult {
 	captureState: CaptureState;
 	viewers: ViewerInfo[];
 	startCapture: () => Promise<void>;
 	stopCapture: () => void;
 	kickViewer: (viewerId: string) => Promise<void>;
+	grantAccess: (requestId: string) => void;
+	denyAccess: (requestId: string, blacklist?: boolean) => void;
+	/** Re-sends host:join to the gateway with the given password's hash.
+	 * Must be called after saving a new password so the gateway hash stays in sync. */
+	updatePassword: (pw: string) => Promise<void>;
 }
 
-export function useWebRTCHost(agentId: string, password: string): UseWebRTCHostResult {
+export function useWebRTCHost(
+	agentId: string,
+	password: string,
+	options?: UseWebRTCHostOptions,
+): UseWebRTCHostResult {
 	const [captureState, setCaptureState] = useState<CaptureState>("idle");
 	const [viewers, setViewers] = useState<ViewerInfo[]>([]);
 
@@ -25,24 +38,33 @@ export function useWebRTCHost(agentId: string, password: string): UseWebRTCHostR
 	const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
 	const wsRef = useRef<WebSocket | null>(null);
 
+	// Stable refs so the effect closure always sees the latest values.
+	const passwordRef = useRef(password);
+	passwordRef.current = password;
+
+	const onAccessRequestedRef = useRef(options?.onAccessRequested);
+	onAccessRequestedRef.current = options?.onAccessRequested;
+
 	const stopCapture = useCallback(() => {
 		streamRef.current?.getTracks().forEach((t) => t.stop());
 		streamRef.current = null;
 		for (const pc of peersRef.current.values()) pc.close();
 		peersRef.current.clear();
-		wsRef.current?.close();
-		wsRef.current = null;
 		setViewers([]);
 		setCaptureState("idle");
 	}, []);
 
-	const connectSignaling = useCallback(
-		(stream: MediaStream) => {
+	// Always-on signaling connection. Reconnects automatically on unexpected close.
+	useEffect(() => {
+		let destroyed = false;
+		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+		function openWs() {
 			const ws = new WebSocket(getSignalingUrl());
 			wsRef.current = ws;
 
 			ws.onopen = async () => {
-				const passwordHash = password ? await sha256hex(password) : "";
+				const passwordHash = passwordRef.current ? await sha256hex(passwordRef.current) : "";
 				ws.send(JSON.stringify({ event: "host:join", data: { agentId, passwordHash } }));
 			};
 
@@ -56,7 +78,16 @@ export function useWebRTCHost(agentId: string, password: string): UseWebRTCHostR
 
 				const msgEvent = msg.event as string | undefined;
 
-				if (msgEvent === "viewer:joined") {
+				if (msgEvent === "access:requested") {
+					const requestId = msg.requestId as string;
+					const deviceId = msg.deviceId as string;
+					const label = msg.label as string | undefined;
+					onAccessRequestedRef.current?.(requestId, deviceId, label);
+					return;
+				}
+
+				if (msgEvent === "viewer:joined" && streamRef.current) {
+					const stream = streamRef.current;
 					const viewerId = msg.viewerId as string;
 					const label = msg.label as string | undefined;
 					const connectedAt = new Date().toISOString();
@@ -69,8 +100,9 @@ export function useWebRTCHost(agentId: string, password: string): UseWebRTCHostR
 					]);
 
 					pc.onicecandidate = ({ candidate }) => {
-						if (candidate && ws.readyState === WebSocket.OPEN) {
-							ws.send(
+						const currentWs = wsRef.current;
+						if (candidate && currentWs && currentWs.readyState === WebSocket.OPEN) {
+							currentWs.send(
 								JSON.stringify({
 									event: "webrtc:ice",
 									data: {
@@ -122,10 +154,22 @@ export function useWebRTCHost(agentId: string, password: string): UseWebRTCHostR
 
 			ws.onclose = () => {
 				setCaptureState((s) => (s === "active" ? "error" : s));
+				// Reconnect after a short delay unless the effect is being cleaned up.
+				if (!destroyed) {
+					reconnectTimer = setTimeout(openWs, 3000);
+				}
 			};
-		},
-		[agentId, password],
-	);
+		}
+
+		openWs();
+
+		return () => {
+			destroyed = true;
+			if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+			wsRef.current?.close();
+			wsRef.current = null;
+		};
+	}, [agentId]);
 
 	const startCapture = useCallback(async () => {
 		if (captureState === "active") return;
@@ -137,12 +181,11 @@ export function useWebRTCHost(agentId: string, password: string): UseWebRTCHostR
 			});
 			streamRef.current = stream;
 			stream.getVideoTracks()[0]?.addEventListener("ended", () => stopCapture());
-			connectSignaling(stream);
 			setCaptureState("active");
 		} catch {
 			setCaptureState("error");
 		}
-	}, [captureState, connectSignaling, stopCapture]);
+	}, [captureState, stopCapture]);
 
 	const kickViewer = useCallback(
 		async (viewerId: string) => {
@@ -154,8 +197,46 @@ export function useWebRTCHost(agentId: string, password: string): UseWebRTCHostR
 		[agentId],
 	);
 
-	// Clean up on unmount
+	const grantAccess = useCallback(
+		(requestId: string) => {
+			wsRef.current?.send(JSON.stringify({ event: "access:grant", data: { requestId, agentId } }));
+		},
+		[agentId],
+	);
+
+	const denyAccess = useCallback(
+		(requestId: string, blacklist?: boolean) => {
+			wsRef.current?.send(
+				JSON.stringify({
+					event: "access:deny",
+					data: { requestId, agentId, blacklist: !!blacklist },
+				}),
+			);
+		},
+		[agentId],
+	);
+
+	const updatePassword = useCallback(
+		async (pw: string) => {
+			const ws = wsRef.current;
+			if (!ws || ws.readyState !== WebSocket.OPEN) return;
+			const passwordHash = pw ? await sha256hex(pw) : "";
+			ws.send(JSON.stringify({ event: "host:join", data: { agentId, passwordHash } }));
+		},
+		[agentId],
+	);
+
+	// Clean up media on unmount (WS is cleaned by its own effect).
 	useEffect(() => () => stopCapture(), [stopCapture]);
 
-	return { captureState, viewers, startCapture, stopCapture, kickViewer };
+	return {
+		captureState,
+		viewers,
+		startCapture,
+		stopCapture,
+		kickViewer,
+		grantAccess,
+		denyAccess,
+		updatePassword,
+	};
 }

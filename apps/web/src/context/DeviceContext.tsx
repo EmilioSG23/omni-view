@@ -1,6 +1,15 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { BROWSER_AGENT_VERSION, PASSWORD_STORAGE_KEY } from "../consts";
 import { sha256hex } from "../core/webrtc";
+import { useNotifications } from "../hooks/useNotifications";
 import { type CaptureState, useWebRTCHost } from "../hooks/useWebRTCHost";
 import { agentApi } from "../services/agent-api";
 import { getDeviceId } from "../utils/device-identity";
@@ -30,6 +39,12 @@ export interface DeviceContextType {
 	viewers: ViewerInfo[];
 	/** Kick a viewer. */
 	kickViewer: (viewerId: string) => Promise<void>;
+	/** Grant a pending access request. */
+	grantAccess: (requestId: string) => void;
+	/** Deny a pending access request. Pass blacklist=true to also block the device. */
+	denyAccess: (requestId: string, blacklist?: boolean) => void;
+	/** Increments whenever the whitelist/blacklist changes so panels can reload. */
+	whitelistVersion: number;
 }
 
 const DeviceContext = createContext<DeviceContextType | null>(null);
@@ -37,14 +52,71 @@ const DeviceContext = createContext<DeviceContextType | null>(null);
 export function DeviceProvider({ children }: { children: ReactNode }) {
 	const agentId = getDeviceId();
 	const [isRegistered, setIsRegistered] = useState(false);
+	const [whitelistVersion, setWhitelistVersion] = useState(0);
 	const [password, setPassword] = useState<string>(
 		() => localStorage.getItem(PASSWORD_STORAGE_KEY) ?? "",
 	);
 
-	const { captureState, viewers, startCapture, stopCapture, kickViewer } = useWebRTCHost(
-		agentId,
-		password,
+	const { addNotification, removeNotification } = useNotifications();
+
+	// Stable refs to avoid stale closures inside the callback passed to useWebRTCHost.
+	const grantAccessRef = useRef<(requestId: string) => void>(() => {});
+	const denyAccessRef = useRef<(requestId: string, blacklist?: boolean) => void>(() => {});
+
+	const handleAccessRequested = useCallback(
+		(requestId: string, deviceId: string, label?: string) => {
+			const notifId = `access-${requestId}`;
+			addNotification({
+				id: notifId,
+				message: `${label ?? deviceId} is requesting screen access`,
+				status: "REQUEST",
+				actions: [
+					{
+						label: "Accept",
+						variant: "default",
+						onClick: () => {
+							grantAccessRef.current(requestId);
+							removeNotification(notifId);
+							setWhitelistVersion((v) => v + 1);
+						},
+					},
+					{
+						label: "Reject",
+						variant: "danger",
+						onClick: () => {
+							denyAccessRef.current(requestId);
+							removeNotification(notifId);
+						},
+					},
+					{
+						label: "Block",
+						variant: "warn",
+						onClick: () => {
+							denyAccessRef.current(requestId, true);
+							removeNotification(notifId);
+							setWhitelistVersion((v) => v + 1);
+						},
+					},
+				],
+			});
+		},
+		[addNotification, removeNotification],
 	);
+
+	const {
+		captureState,
+		viewers,
+		startCapture,
+		stopCapture,
+		kickViewer,
+		grantAccess,
+		denyAccess,
+		updatePassword,
+	} = useWebRTCHost(agentId, password, { onAccessRequested: handleAccessRequested });
+
+	// Keep refs current after every render.
+	grantAccessRef.current = grantAccess;
+	denyAccessRef.current = denyAccess;
 
 	// ── Register this device on mount ──────────────────────────────────────────
 	useEffect(() => {
@@ -82,8 +154,9 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 				capture_mode: "browser",
 				password_hash: passwordHash,
 			});
+			await updatePassword(toStore);
 		},
-		[agentId, password],
+		[agentId, password, updatePassword],
 	);
 
 	return (
@@ -99,6 +172,9 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 				stopCapture,
 				viewers,
 				kickViewer,
+				grantAccess,
+				denyAccess,
+				whitelistVersion,
 			}}
 		>
 			{children}

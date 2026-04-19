@@ -50,6 +50,22 @@ export class CheckWhitelistQueryDto {
 	device_id!: string;
 }
 
+export class AddToBlacklistDto {
+	@IsString()
+	@MinLength(1)
+	device_id!: string;
+
+	@IsString()
+	@IsOptional()
+	label?: string;
+}
+
+export class CheckBlacklistQueryDto {
+	@IsString()
+	@MinLength(1)
+	device_id!: string;
+}
+
 /** Body DTO for POST /agents/:id/connect */
 export class ConnectAgentDto {
 	/**

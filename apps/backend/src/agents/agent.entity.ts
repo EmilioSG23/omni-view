@@ -6,6 +6,7 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from "typeorm";
+import { BlacklistEntity } from "./blacklist.entity";
 import { WhitelistEntity } from "./whitelist.entity";
 
 @Entity("agents")
@@ -39,4 +40,7 @@ export class AgentEntity {
 
 	@OneToMany(() => WhitelistEntity, (w: WhitelistEntity) => w.agent, { cascade: true })
 	whitelist!: WhitelistEntity[];
+
+	@OneToMany(() => BlacklistEntity, (b: BlacklistEntity) => b.agent, { cascade: true })
+	blacklist!: BlacklistEntity[];
 }

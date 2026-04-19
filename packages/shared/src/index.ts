@@ -283,69 +283,63 @@ export interface WebRtcIcePayload {
 	fromHost: boolean;
 }
 
-// ─── WebRTC signaling — viewer session ───────────────────────────────────────
+// ─── Backend REST API — Blacklist ─────────────────────────────────────────────
 
-/** A viewer currently watching an agent's screen via WebRTC. */
-export interface ViewerInfo {
-	viewer_id: string;
-	/** Optional human-readable label (device name, etc.). */
-	label?: string;
-	/** ISO 8601 timestamp of when the viewer connected. */
-	connected_at: string;
-}
-
-// ─── WebRTC signaling — SDP / ICE primitives ─────────────────────────────────
-
-/** SDP offer or answer description (avoids importing browser-only RTCSessionDescriptionInit). */
-export interface SdpDescription {
-	type: "offer" | "answer" | "pranswer" | "rollback";
-	sdp: string;
-}
-
-/** ICE candidate (avoids importing browser-only RTCIceCandidateInit). */
-export interface IceCandidatePayload {
-	candidate: string;
-	sdpMid: string | null;
-	sdpMLineIndex: number | null;
-}
-
-// ─── WebRTC signaling — gateway event payloads ───────────────────────────────
-
-/** Browser host → gateway: register as the capture host for this agent. */
-export interface HostJoinPayload {
-	agentId: string;
-	/** SHA-256 hex of the session password — stored by gateway for viewer auth. */
-	passwordHash: string;
-}
-
-/** Viewer → gateway: request to watch a browser-captured agent. */
-export interface ViewerRequestPayload {
-	agentId: string;
-	viewerId: string;
-	/** Plain-text password; gateway hashes and compares to the host's stored hash. */
-	password: string;
+export interface AddToBlacklistDto {
+	device_id: string;
 	label?: string;
 }
 
-/** Host → gateway: forward SDP offer to a specific viewer. */
-export interface WebRtcOfferPayload {
-	agentId: string;
-	viewerId: string;
-	sdp: SdpDescription;
+export interface BlacklistEntry {
+	id: string;
+	agent_id: string;
+	device_id: string;
+	label?: string;
+	created_at: string;
 }
 
-/** Viewer → gateway: forward SDP answer back to host. */
-export interface WebRtcAnswerPayload {
-	agentId: string;
-	viewerId: string;
-	sdp: SdpDescription;
+export interface CheckBlacklistResponse {
+	blocked: boolean;
 }
 
-/** Either side → gateway: relay an ICE candidate to the other peer. */
-export interface WebRtcIcePayload {
+// ─── Access request flow — WS event payloads ─────────────────────────────────
+
+/** Viewer → gateway: request access to view an agent. */
+export interface AccessRequestPayload {
+	requestId: string;
 	agentId: string;
-	viewerId: string;
-	candidate: IceCandidatePayload;
-	/** true = sent by host → relay to viewer. false = sent by viewer → relay to host. */
-	fromHost: boolean;
+	deviceId: string;
+	label?: string;
+}
+
+/** Gateway → host: a viewer is requesting access. */
+export interface AccessRequestedPayload {
+	requestId: string;
+	deviceId: string;
+	label?: string;
+}
+
+/** Host → gateway: grant a pending access request. */
+export interface AccessGrantPayload {
+	requestId: string;
+	agentId: string;
+}
+
+/** Host → gateway: deny a pending access request. */
+export interface AccessDenyPayload {
+	requestId: string;
+	agentId: string;
+	blacklist?: boolean;
+}
+
+/** Gateway → viewer: access was granted. */
+export interface AccessGrantedPayload {
+	requestId: string;
+}
+
+/** Gateway → viewer: access was denied. */
+export interface AccessDeniedPayload {
+	requestId: string;
+	blacklisted?: boolean;
+	reason?: string;
 }
