@@ -7,7 +7,7 @@
 		"types": ["jest", "node"],
 		"isolatedModules": false,
 		"rootDir": ".",
-		"outDir": "./dist-test"
+		"outDir": "./dist-e2e"
 	},
-	"include": ["src/**/*.spec.ts", "src/**/*.test.ts", "test/**/*.ts"]
+	"include": ["src/**/*", "test/**/*.ts"]
 }
