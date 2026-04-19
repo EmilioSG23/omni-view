@@ -32,7 +32,8 @@ export function HeaderActions() {
 						target="_blank"
 						rel="noopener noreferrer"
 						aria-label={action.ariaLabel ?? action.label}
-						className="inline-flex items-center gap-2 px-3 py-1.5 rounded hover:bg-surface-1 transition text-sm"
+						className="inline-flex items-center gap-2 px-3 py-1.5 rounded hover:bg-surface-1 transition text-sm
+						border border-border hover:bg-accent-glow/25"
 					>
 						{Icon ? <Icon className="h-4 w-4" /> : null}
 						{action.label ? <span className="hidden sm:inline">{action.label}</span> : null}

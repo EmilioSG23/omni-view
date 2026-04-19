@@ -32,49 +32,30 @@ export function DirectoryPage({ onConnect }: DirectoryPageProps) {
 			</header>
 
 			<div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
-				<div className="flex flex-col md:grid md:h-full md:grid-cols-[24rem_1fr] md:grid-rows-[auto_minmax(0,1fr)]">
-					{/* ── Left column: Device + History (mobile only) + Access ── */}
-					{/* Mobile: flows naturally; md+: col-1 spans both rows */}
-					<div className="flex flex-col md:col-start-1 md:row-start-1 md:row-span-2 md:overflow-y-auto">
-						<div className="p-2 md:p-5 shrink-0">
-							<DevicePanel />
-						</div>
+				<div className="flex flex-col md:grid md:h-full md:grid-cols-[24rem_1fr] md:grid-rows-[auto_minmax(0,1fr)] gap-3 p-3 md:gap-4 md:p-4">
+					{/* ── Connect form — mobile: first; desktop: col-2 row-1 ─── */}
+					<main className="order-first md:order-0 min-w-0 md:col-start-2 md:row-start-1 md:overflow-y-auto">
+						<ConnectToAgentForm onConnect={handleConnect} />
+					</main>
 
-						{/* Agent history — visible on mobile only (after DevicePanel) */}
-						<div className="p-2 md:p-5 shrink-0 md:hidden">
-							<AgentHistoryPanel
-								entries={entries}
-								onConnect={handleConnect}
-								onRemove={removeEntry}
-							/>
-						</div>
-
-						<div className="p-2 md:p-5 flex-1 min-h-0 overflow-y-auto">
+					{/* ── Left column: Device + Access — col-1, spans both rows ── */}
+					<div className="flex flex-col gap-3 md:gap-4 md:col-start-1 md:row-start-1 md:row-span-2 md:overflow-y-auto">
+						<DevicePanel />
+						<div className="flex-1 min-h-0 overflow-y-auto">
 							<AccessControlPanel />
 						</div>
 					</div>
 
-					{/* ── Main (connect form) ────────────────────────────────── */}
-					{/* Mobile: first; md+: col-2 row-1 */}
-					<main className="order-first md:order-0 p-2 md:p-6 min-w-0 flex flex-col gap-5 md:col-start-2 md:row-start-1 md:overflow-y-auto">
-						<ConnectToAgentForm onConnect={handleConnect} />
-					</main>
-
-					{/* ── Bottom row: Agent History + Viewers (md+) ─────────── */}
-					{/* Mobile: hidden history here (shown above); Viewers shown normally */}
-					{/* md+: col-2 row-2, split 50/50 */}
-					<div className="md:col-start-2 md:row-start-2 flex flex-col lg:flex-row gap-3 p-2 md:p-5 md:overflow-hidden">
-						{/* Agent history — hidden on mobile (rendered in left col instead) */}
-						<div className="hidden md:flex flex-col flex-1 min-w-0 overflow-y-auto">
+					{/* ── Bottom row: History + Viewers — col-2 row-2 ────────── */}
+					<div className="md:col-start-2 md:row-start-2 flex flex-col lg:flex-row gap-3 md:gap-4 md:overflow-hidden">
+						<div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
 							<AgentHistoryPanel
 								entries={entries}
 								onConnect={handleConnect}
 								onRemove={removeEntry}
 							/>
 						</div>
-
-						{/* Viewers — always visible */}
-						<div className="flex flex-col flex-1 min-w-0">
+						<div className="flex-1 min-w-0 flex flex-col">
 							<ConnectedViewersList />
 						</div>
 					</div>
