@@ -22,6 +22,8 @@ export interface AgentSession {
 @Injectable()
 export class AgentClientService implements OnModuleDestroy {
 	private readonly sessions = new Map<string, AgentSession>();
+	private readonly reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	private isDestroying = false;
 	private readonly frameStorePath: string;
 
 	constructor(
@@ -60,10 +62,44 @@ export class AgentClientService implements OnModuleDestroy {
 		return this.sessions.get(agentId)?.connected ?? false;
 	}
 
-	onModuleDestroy(): void {
-		for (const [id] of this.sessions) {
-			this.disconnect(id);
+	async onModuleDestroy(): Promise<void> {
+		this.isDestroying = true;
+
+		// Cancel all pending reconnect timers (covers sessions that already left the map)
+		for (const timer of this.reconnectTimers.values()) {
+			clearTimeout(timer);
 		}
+		this.reconnectTimers.clear();
+
+		// Gracefully close all active sessions and wait for the WS close events to fire
+		// before returning. This ensures app.close() fully drains WebSocket traffic so
+		// no logging happens after Jest (or any test runner) has torn down.
+		const drainPromises: Promise<void>[] = [];
+		for (const [id, session] of this.sessions) {
+			drainPromises.push(
+				new Promise<void>((resolve) => {
+					if (session.ws.readyState === WebSocket.CLOSED) {
+						resolve();
+						return;
+					}
+					const t = setTimeout(() => {
+						session.ws.terminate();
+						resolve();
+					}, 2000);
+					session.ws.once("close", () => {
+						clearTimeout(t);
+						resolve();
+					});
+					if (session.ws.readyState === WebSocket.OPEN) {
+						session.ws.close(1000, "backend disconnect");
+					}
+				}),
+			);
+			this.sessions.delete(id);
+			logger.info(`Disconnected from agent ${id}`, CONTEXT);
+		}
+
+		await Promise.all(drainPromises);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -93,13 +129,23 @@ export class AgentClientService implements OnModuleDestroy {
 			session.connected = false;
 			this.sessions.delete(agentId);
 			this.wsGateway.notifyAgentSubscribers(agentId, { type: "agent_offline", agentId });
+			// Code 1000 = intentional close via disconnect() — do not reconnect
+			// isDestroying = module teardown in progress — do not reconnect
+			if (code === 1000 || this.isDestroying) {
+				logger.info(`Connection to agent ${agentId} closed cleanly — no reconnect`, CONTEXT);
+				return;
+			}
 			logger.warn(
 				`Connection to agent ${agentId} closed (code=${code} reason=${reason}) — scheduling reconnect`,
 				CONTEXT,
 			);
 			// Exponential backoff: max 30 s
 			const delay = Math.min(500 * 2 ** attempt, 30_000);
-			setTimeout(() => this.openConnection(agentId, wsUrl, password, attempt + 1, persist), delay);
+			const timer = setTimeout(() => {
+				this.reconnectTimers.delete(agentId);
+				this.openConnection(agentId, wsUrl, password, attempt + 1, persist);
+			}, delay);
+			this.reconnectTimers.set(agentId, timer);
 		});
 
 		ws.on("error", (err) => {

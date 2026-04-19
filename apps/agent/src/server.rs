@@ -13,6 +13,17 @@ use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
 pub async fn start_server(config: ServerConfig) {
+    start_server_with_injected(config, None).await;
+}
+
+/// Like [`start_server`] but accepts an optional `broadcast::Sender<StreamEvent>` whose
+/// messages are forwarded directly to connected clients.  When `Some` is supplied the
+/// real screen-capture loop is **not** started, making this safe to call in tests
+/// without a display or screen-capture permissions.
+pub async fn start_server_with_injected(
+    config: ServerConfig,
+    frame_source: Option<broadcast::Sender<StreamEvent>>,
+) {
     let listener = TcpListener::bind(&config.bind_addr)
         .await
         .unwrap_or_else(|e| panic!("Failed to bind to {}: {e}", config.bind_addr));
@@ -31,25 +42,41 @@ pub async fn start_server(config: ServerConfig) {
     let client_count = Arc::new(AtomicUsize::new(0));
     let session = SessionControl::new(SessionState::Idle);
 
-    let (mpsc_tx, mut mpsc_rx) = mpsc::channel::<StreamEvent>(4);
-    let (bcast_tx, _initial_rx) = broadcast::channel::<StreamEvent>(8);
+    let (bcast_tx, _initial_rx) = broadcast::channel::<StreamEvent>(16);
 
-    let session_capture = session.clone();
-    let enc_config = EncoderConfig {
-        encoder: config.encoder.clone(),
-        fps: fps.clone(),
-        quality: quality.clone(),
-    };
-    tokio::task::spawn_blocking(move || {
-        run_capture_loop(enc_config, mpsc_tx, session_capture);
-    });
-
-    let bcast_tx_fanout = bcast_tx.clone();
-    tokio::spawn(async move {
-        while let Some(event) = mpsc_rx.recv().await {
-            let _ = bcast_tx_fanout.send(event);
+    match frame_source {
+        None => {
+            // Production path: start the real screen-capture loop.
+            let (mpsc_tx, mut mpsc_rx) = mpsc::channel::<StreamEvent>(4);
+            let session_capture = session.clone();
+            let enc_config = EncoderConfig {
+                encoder: config.encoder.clone(),
+                fps: fps.clone(),
+                quality: quality.clone(),
+            };
+            tokio::task::spawn_blocking(move || {
+                run_capture_loop(enc_config, mpsc_tx, session_capture);
+            });
+            let bcast_tx_fanout = bcast_tx.clone();
+            tokio::spawn(async move {
+                while let Some(event) = mpsc_rx.recv().await {
+                    let _ = bcast_tx_fanout.send(event);
+                }
+            });
         }
-    });
+        Some(injected_tx) => {
+            // Test / injected path: subscribe to the caller-supplied sender and fan
+            // its events into the internal broadcast channel.  No capture loop is
+            // spawned, so this path has zero platform / display dependencies.
+            let bcast_tx_fanout = bcast_tx.clone();
+            let mut injected_rx = injected_tx.subscribe();
+            tokio::spawn(async move {
+                while let Ok(event) = injected_rx.recv().await {
+                    let _ = bcast_tx_fanout.send(event);
+                }
+            });
+        }
+    }
 
     let password_hash = Arc::new(config.password_hash);
     let agent_id = Arc::new(config.agent_id);
