@@ -1,7 +1,10 @@
-import { IsBoolean, IsOptional, IsString, IsUrl, IsUUID, MinLength } from "class-validator";
+import { IsBoolean, IsOptional, IsString, IsUrl, Matches, MinLength } from "class-validator";
+
+/** 12-digit numeric device ID (AnyDesk-style). */
+const DEVICE_ID_REGEX = /^\d{12}$/;
 
 export class RegisterAgentDto {
-	@IsUUID()
+	@Matches(DEVICE_ID_REGEX, { message: "agent_id must be a 12-digit numeric string" })
 	agent_id!: string;
 
 	@IsString()

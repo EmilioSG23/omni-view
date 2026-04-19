@@ -29,6 +29,36 @@ export const QUALITY_PRESETS: Record<Exclude<QualityPreset, "custom">, QualityCo
 export const AGENT_PASSWORD_MAX_LENGTH = 8;
 
 /**
+ * Length (in digits) of a numeric device identifier, analogous to AnyDesk /
+ * TeamViewer IDs. The raw value is stored without separators; use
+ * `formatDeviceId` from the web app to display it with spaces.
+ */
+export const DEVICE_ID_LENGTH = 12;
+
+/**
+ * Generate a numeric device ID of {@link DEVICE_ID_LENGTH} digits.
+ * Uses the shared Web Crypto API when available, falling back to Math.random.
+ *
+ * The first digit is forced to be non-zero to avoid leading-zero display issues.
+ */
+export function generateNumericId(length = DEVICE_ID_LENGTH): string {
+	const cryptoObj = typeof globalThis !== "undefined" ? (globalThis as any).crypto : undefined;
+	if (cryptoObj && typeof cryptoObj.getRandomValues === "function") {
+		const bytes = new Uint8Array(length);
+		cryptoObj.getRandomValues(bytes);
+		let id = "";
+		for (let i = 0; i < length; i++) {
+			id += i === 0 ? (1 + (bytes[i] % 9)).toString() : (bytes[i] % 10).toString();
+		}
+		return id;
+	}
+	// Fallback for environments without Web Crypto
+	let out = (Math.floor(Math.random() * 9) + 1).toString();
+	while (out.length < length) out += Math.floor(Math.random() * 10).toString();
+	return out;
+}
+
+/**
  * Generate a random agent password consisting of letters and digits only.
  * Uses the shared Web Crypto API when available, falling back to Math.random.
  */

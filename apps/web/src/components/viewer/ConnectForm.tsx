@@ -2,7 +2,7 @@
 
 import { useWhitelistCheck } from "@/hooks/useWhitelistCheck";
 import { SpinnerIcon } from "@/icons/SpinnerIcon";
-import { truncateDeviceId } from "@/utils/format";
+import { formatDeviceId } from "@/utils/format";
 import type { AgentSummary } from "@omni-view/shared";
 import { useState } from "react";
 
@@ -60,7 +60,7 @@ export function ConnectForm({ agent, onSubmit }: ConnectFormProps) {
 						className="font-mono text-xs text-secondary overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0"
 						title={deviceId}
 					>
-						{truncateDeviceId(deviceId)}
+						{formatDeviceId(deviceId)}
 					</span>
 					<button
 						type="button"

@@ -3,7 +3,6 @@ import { useDevice } from "@/context/DeviceContext";
 import { EyeIcon } from "@/icons/EyeIcon";
 import { EyeOffIcon } from "@/icons/EyeOffIcon";
 import { RefreshIcon } from "@/icons/RefreshIcon";
-import { truncateDeviceId } from "@/utils/format";
 import { AGENT_PASSWORD_MAX_LENGTH, generateAgentPassword } from "@omni-view/shared";
 import { useState } from "react";
 
@@ -96,9 +95,7 @@ export function DevicePanel() {
 					title="Click to copy"
 					className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-elevated hover:bg-overlay transition-colors text-left group"
 				>
-					<span className="font-mono text-xs text-primary truncate flex-1">
-						{truncateDeviceId(agentId)}
-					</span>
+					<span className="font-mono text-xs text-primary truncate flex-1">{agentId}</span>
 					<span className="text-muted group-hover:text-accent text-xs shrink-0">
 						{copied ? "✓" : "⎘"}
 					</span>

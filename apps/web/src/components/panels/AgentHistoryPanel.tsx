@@ -2,7 +2,7 @@ import { PasswordPrompt } from "@/components/PasswordPrompt";
 import type { AgentHistoryEntry } from "@/hooks/useAgentHistory";
 import { useModal } from "@/hooks/useModal";
 import { agentApi } from "@/services/agent-api";
-import { formatAge, truncateDeviceId } from "@/utils/format";
+import { formatAge, formatDeviceId } from "@/utils/format";
 import type { AgentSummary } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 function HistoryRow({
@@ -20,8 +20,8 @@ function HistoryRow({
 	onConnect: () => void;
 	onRemove: () => void;
 }) {
-	const displayName = entry.label ?? truncateDeviceId(entry.agent_id);
-	const shortId = truncateDeviceId(entry.agent_id);
+	const displayName = entry.label ?? formatDeviceId(entry.agent_id);
+	const shortId = formatDeviceId(entry.agent_id);
 	const ago = formatAge(entry.last_connected_at);
 	const mode = entry.capture_mode ?? "native";
 

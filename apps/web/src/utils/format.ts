@@ -14,9 +14,11 @@ export function formatAge(iso: string): string {
 }
 
 /**
- * Truncates a device/agent UUID for display: first 8 chars + ellipsis + last 6 chars.
- * e.g. "a1b2c3d4…e5f6a7b8" (safe for IDs shorter than 18 chars — returned as-is).
+ * Formats a numeric device ID for display by inserting a space every 3 digits.
+ * e.g. "123456789012" → "123 456 789 012"
+ * Non-digit characters (legacy UUIDs) are returned as-is.
  */
-export function truncateDeviceId(id: string): string {
-	return id.length > 18 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id;
+export function formatDeviceId(id: string): string {
+	if (!/^\d+$/.test(id)) return id;
+	return id.replace(/(\d{3})(?=\d)/g, "$1 ");
 }

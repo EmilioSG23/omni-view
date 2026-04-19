@@ -1,5 +1,5 @@
 import { useDevice } from "@/context/DeviceContext";
-import { formatAge, truncateDeviceId } from "@/utils/format";
+import { formatAge, formatDeviceId } from "@/utils/format";
 import type { ViewerInfo } from "@omni-view/shared";
 
 function ViewerRow({ viewer, onKick }: { viewer: ViewerInfo; onKick: () => void }) {
@@ -9,7 +9,7 @@ function ViewerRow({ viewer, onKick }: { viewer: ViewerInfo; onKick: () => void 
 		<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-elevated group">
 			<div className="flex-1 min-w-0">
 				<p className="text-xs text-primary truncate">
-					{viewer.label ?? truncateDeviceId(viewer.viewer_id)}
+					{viewer.label ?? formatDeviceId(viewer.viewer_id)}
 				</p>
 				<p className="text-xs text-muted">{connectedAgo}</p>
 			</div>
