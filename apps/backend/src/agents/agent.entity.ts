@@ -27,6 +27,10 @@ export class AgentEntity {
 	@Column({ nullable: true, type: "text" })
 	password_hash!: string | null;
 
+	/** Capture mode: 'native' (Rust agent) or 'browser' (getDisplayMedia + WebRTC). */
+	@Column({ nullable: true, type: "text" })
+	capture_mode!: string | null;
+
 	@CreateDateColumn()
 	registered_at!: Date;
 

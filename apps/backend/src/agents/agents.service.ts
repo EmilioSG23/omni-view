@@ -25,6 +25,7 @@ export class AgentsService {
 			if (dto.label !== undefined) existing.label = dto.label ?? null;
 			if (dto.ws_url !== undefined) existing.ws_url = dto.ws_url ?? null;
 			if (dto.password_hash !== undefined) existing.password_hash = dto.password_hash ?? null;
+			if (dto.capture_mode !== undefined) existing.capture_mode = dto.capture_mode ?? null;
 			return this.agents.save(existing);
 		}
 
@@ -34,6 +35,7 @@ export class AgentsService {
 			version: dto.version,
 			ws_url: dto.ws_url ?? null,
 			password_hash: dto.password_hash ?? null,
+			capture_mode: dto.capture_mode ?? null,
 		});
 		logger.info(`Agent ${dto.agent_id} registered`, "AgentsService");
 		return this.agents.save(entity);

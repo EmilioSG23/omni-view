@@ -11,38 +11,61 @@ import {
 	Query,
 } from "@nestjs/common";
 import { hashPassword } from "../common/utils/crypto";
+import { WsGateway } from "../ws/ws.gateway";
 import { AgentClientService } from "./agent-client.service";
+import { AgentEntity } from "./agent.entity";
 import {
 	AddToWhitelistDto,
+	AgentSummaryDto,
 	CheckWhitelistQueryDto,
 	ConnectAgentDto,
 	RegisterAgentDto,
+	RegisterAgentResponseDto,
 } from "./agents.dto";
 import { AgentsService } from "./agents.service";
+
+function toSummary(entity: AgentEntity): AgentSummaryDto {
+	return {
+		agent_id: entity.agent_id,
+		label: entity.label,
+		version: entity.version,
+		ws_url: entity.ws_url,
+		capture_mode: entity.capture_mode,
+		registered_at: entity.registered_at.toISOString(),
+		last_seen_at: entity.last_seen_at.toISOString(),
+	};
+}
 
 @Controller("agents")
 export class AgentsController {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentClientService: AgentClientService,
+		private readonly wsGateway: WsGateway,
 	) {}
 
 	/** Register or update an agent. Called by the agent on startup. */
 	@Post("register")
-	register(@Body() dto: RegisterAgentDto) {
-		return this.agentsService.register(dto);
+	async register(@Body() dto: RegisterAgentDto): Promise<RegisterAgentResponseDto> {
+		const entity = await this.agentsService.register(dto);
+		return {
+			agent_id: entity.agent_id,
+			registered_at: entity.registered_at.toISOString(),
+		};
 	}
 
 	/** List all registered agents. */
 	@Get()
-	findAll() {
-		return this.agentsService.findAll();
+	async findAll(): Promise<AgentSummaryDto[]> {
+		const entities = await this.agentsService.findAll();
+		return entities.map(toSummary);
 	}
 
 	/** Get a specific agent by ID. */
 	@Get(":id")
-	findOne(@Param("id") id: string) {
-		return this.agentsService.findOne(id);
+	async findOne(@Param("id") id: string): Promise<AgentSummaryDto> {
+		const entity = await this.agentsService.findOne(id);
+		return toSummary(entity);
 	}
 
 	/** Mark an agent as recently active. Called by the agent on each heartbeat. */
@@ -124,5 +147,20 @@ export class AgentsController {
 			agentId,
 			connected: this.agentClientService.isConnected(agentId),
 		};
+	}
+
+	/** List viewers currently watching a browser-captured agent via WebRTC. */
+	@Get(":id/viewers")
+	getViewers(
+		@Param("id") agentId: string,
+	): Array<{ viewer_id: string; label?: string; connected_at: string }> {
+		return this.wsGateway.getViewers(agentId);
+	}
+
+	/** Kick a viewer from a browser-captured agent session. */
+	@Delete(":id/viewers/:viewerId")
+	@HttpCode(HttpStatus.NO_CONTENT)
+	kickViewer(@Param("id") agentId: string, @Param("viewerId") viewerId: string): void {
+		this.wsGateway.kickViewer(agentId, viewerId);
 	}
 }

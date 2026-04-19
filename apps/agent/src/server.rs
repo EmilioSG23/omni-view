@@ -199,7 +199,11 @@ async fn handle_client(
             msg = receiver.next() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
-                        handle_control_message(&text, &paused, &fps, &quality, &addr);
+                        if let Some(response) = handle_control_message(&text, &paused, &fps, &quality, &addr) {
+                            if sender.send(Message::Text(response)).await.is_err() {
+                                break;
+                            }
+                        }
                     }
                     Some(Ok(Message::Close(_))) | None => break,
                     Some(Err(_)) => break,
@@ -224,19 +228,21 @@ fn handle_control_message(
     fps: &Arc<AtomicU32>,
     quality: &Arc<AtomicU8>,
     addr: &SocketAddr,
-) {
+) -> Option<String> {
     let Ok(msg) = serde_json::from_str::<serde_json::Value>(text) else {
-        return;
+        return None;
     };
 
     match msg["type"].as_str() {
         Some("pause") => {
             paused.store(true, Ordering::Relaxed);
             println!("[PAUSED] {addr} paused their stream");
+            None
         }
         Some("resume") => {
             paused.store(false, Ordering::Relaxed);
             println!("[STREAMING] {addr} resumed their stream");
+            None
         }
         Some("config") => {
             let (new_fps, new_quality) = match msg["preset"].as_str().unwrap_or("balanced") {
@@ -260,8 +266,13 @@ fn handle_control_message(
             println!(
                 "[CONFIG] {addr} changed quality → fps={new_fps} quality={new_quality}"
             );
+            let response = serde_json::json!({
+                "type": "quality_changed",
+                "config": { "fps": new_fps, "quality": new_quality }
+            });
+            Some(response.to_string())
         }
-        _ => {}
+        _ => None,
     }
 }
 
@@ -294,8 +305,9 @@ mod tests {
     fn handle_control_message_pause_sets_paused() {
         let (paused, fps, quality) = make_atomics();
         let msg = r#"{"type":"pause"}"#;
-        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(msg, &paused, &fps, &quality, &test_addr());
         assert!(paused.load(Ordering::Relaxed), "paused should be true after pause message");
+        assert!(resp.is_none(), "pause should not produce a response");
     }
 
     #[test]
@@ -303,44 +315,60 @@ mod tests {
         let (paused, fps, quality) = make_atomics();
         paused.store(true, Ordering::Relaxed);
         let msg = r#"{"type":"resume"}"#;
-        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(msg, &paused, &fps, &quality, &test_addr());
         assert!(!paused.load(Ordering::Relaxed), "paused should be false after resume message");
+        assert!(resp.is_none(), "resume should not produce a response");
     }
 
     #[test]
     fn handle_control_message_config_performance_preset() {
         let (paused, fps, quality) = make_atomics();
         let msg = r#"{"type":"config","preset":"performance"}"#;
-        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(msg, &paused, &fps, &quality, &test_addr());
         assert_eq!(fps.load(Ordering::Relaxed), 5);
         assert_eq!(quality.load(Ordering::Relaxed), 40);
+        let json: serde_json::Value = serde_json::from_str(&resp.unwrap()).unwrap();
+        assert_eq!(json["type"], "quality_changed");
+        assert_eq!(json["config"]["fps"], 5);
+        assert_eq!(json["config"]["quality"], 40);
     }
 
     #[test]
     fn handle_control_message_config_quality_preset() {
         let (paused, fps, quality) = make_atomics();
         let msg = r#"{"type":"config","preset":"quality"}"#;
-        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(msg, &paused, &fps, &quality, &test_addr());
         assert_eq!(fps.load(Ordering::Relaxed), 15);
         assert_eq!(quality.load(Ordering::Relaxed), 80);
+        let json: serde_json::Value = serde_json::from_str(&resp.unwrap()).unwrap();
+        assert_eq!(json["type"], "quality_changed");
+        assert_eq!(json["config"]["fps"], 15);
+        assert_eq!(json["config"]["quality"], 80);
     }
 
     #[test]
     fn handle_control_message_config_balanced_preset() {
         let (paused, fps, quality) = make_atomics();
         let msg = r#"{"type":"config","preset":"balanced"}"#;
-        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(msg, &paused, &fps, &quality, &test_addr());
         assert_eq!(fps.load(Ordering::Relaxed), 10);
         assert_eq!(quality.load(Ordering::Relaxed), 60);
+        let json: serde_json::Value = serde_json::from_str(&resp.unwrap()).unwrap();
+        assert_eq!(json["type"], "quality_changed");
+        assert_eq!(json["config"]["fps"], 10);
+        assert_eq!(json["config"]["quality"], 60);
     }
 
     #[test]
     fn handle_control_message_config_custom_values() {
         let (paused, fps, quality) = make_atomics();
         let msg = r#"{"type":"config","preset":"custom","custom":{"fps":20,"quality":75}}"#;
-        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(msg, &paused, &fps, &quality, &test_addr());
         assert_eq!(fps.load(Ordering::Relaxed), 20);
         assert_eq!(quality.load(Ordering::Relaxed), 75);
+        let json: serde_json::Value = serde_json::from_str(&resp.unwrap()).unwrap();
+        assert_eq!(json["config"]["fps"], 20);
+        assert_eq!(json["config"]["quality"], 75);
     }
 
     #[test]
@@ -348,29 +376,34 @@ mod tests {
         let (paused, fps, quality) = make_atomics();
         // fps=999 → clamped to 30, quality=0 → clamped to 1
         let msg = r#"{"type":"config","preset":"custom","custom":{"fps":999,"quality":0}}"#;
-        handle_control_message(msg, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(msg, &paused, &fps, &quality, &test_addr());
         assert_eq!(fps.load(Ordering::Relaxed), 30, "fps should be clamped to 30");
         assert_eq!(quality.load(Ordering::Relaxed), 1, "quality should be clamped to 1");
+        let json: serde_json::Value = serde_json::from_str(&resp.unwrap()).unwrap();
+        assert_eq!(json["config"]["fps"], 30);
+        assert_eq!(json["config"]["quality"], 1);
     }
 
     #[test]
     fn handle_control_message_invalid_json_is_ignored() {
         let (paused, fps, quality) = make_atomics();
         // Should not panic on invalid JSON
-        handle_control_message("not json {{{{", &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message("not json {{{{", &paused, &fps, &quality, &test_addr());
         // State unchanged
         assert!(!paused.load(Ordering::Relaxed));
         assert_eq!(fps.load(Ordering::Relaxed), 10);
         assert_eq!(quality.load(Ordering::Relaxed), 60);
+        assert!(resp.is_none());
     }
 
     #[test]
     fn handle_control_message_unknown_type_is_ignored() {
         let (paused, fps, quality) = make_atomics();
-        handle_control_message(r#"{"type":"unknown_op"}"#, &paused, &fps, &quality, &test_addr());
+        let resp = handle_control_message(r#"{"type":"unknown_op"}"#, &paused, &fps, &quality, &test_addr());
         assert!(!paused.load(Ordering::Relaxed));
         assert_eq!(fps.load(Ordering::Relaxed), 10);
         assert_eq!(quality.load(Ordering::Relaxed), 60);
+        assert!(resp.is_none());
     }
 }
 
