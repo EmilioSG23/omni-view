@@ -57,7 +57,7 @@ function EntryRow({
 					</p>
 				)}
 				<p className="text-xs font-mono text-muted truncate" title={deviceId}>
-					{deviceId.slice(0, 8)}…{deviceId.slice(-6)}
+					{deviceId}
 				</p>
 			</div>
 			<button
