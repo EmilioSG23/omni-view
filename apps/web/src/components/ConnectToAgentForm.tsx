@@ -103,9 +103,9 @@ export function ConnectToAgentForm({ onConnect }: ConnectToAgentFormProps) {
 	return (
 		<form
 			onSubmit={handleSubmit}
-			className="flex flex-col gap-2 p-4 bg-surface rounded-xl border border-border"
+			className="flex flex-col gap-3 p-4 lg:p-5 bg-surface rounded-xl border border-border"
 		>
-			<h2 className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">
+			<h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
 				Connect to Agent
 			</h2>
 			<div className="flex gap-2">
@@ -114,17 +114,17 @@ export function ConnectToAgentForm({ onConnect }: ConnectToAgentFormProps) {
 					value={agentId}
 					onChange={(e) => setAgentId(e.target.value)}
 					placeholder="Paste Agent ID…"
-					className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-elevated border border-border focus:border-accent focus:outline-none text-xs font-mono text-primary placeholder:text-muted"
+					className="flex-1 min-w-0 px-3 py-2.5 rounded-lg bg-elevated border border-border focus:border-accent focus:outline-none text-sm font-mono text-primary placeholder:text-muted"
 				/>
 				<button
 					type="submit"
 					disabled={loading || !agentId.trim()}
-					className="px-4 py-2 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-xs font-semibold transition-colors disabled:opacity-50"
+					className="px-5 py-2.5 rounded-lg bg-accent/10 hover:bg-accent/20 active:bg-accent/30 text-accent text-sm font-semibold transition-colors disabled:opacity-40"
 				>
 					{loading ? "…" : "Go"}
 				</button>
 			</div>
-			{error && <p className="text-error text-xs">{error}</p>}
+			{error && <p className="text-error text-xs mt-0.5">{error}</p>}
 		</form>
 	);
 }

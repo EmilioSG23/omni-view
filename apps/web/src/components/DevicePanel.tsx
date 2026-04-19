@@ -141,8 +141,8 @@ export function DevicePanel() {
 								: "Share Screen"}
 				</button>
 				{!canCapture && (
-					<p className="text-muted text-xs text-center">
-						Screen capture not available in this browser.
+					<p className="text-warn text-xs text-center">
+						Requires HTTPS or localhost — not available over plain HTTP.
 					</p>
 				)}
 			</div>

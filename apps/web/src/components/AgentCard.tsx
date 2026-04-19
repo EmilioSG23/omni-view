@@ -39,7 +39,7 @@ export function AgentCard({ agent, onConnect }: AgentCardProps) {
 
 	return (
 		<article
-			className="bg-surface border border-border rounded-lg p-5 flex flex-col gap-3 cursor-pointer transition-[border-color,box-shadow] duration-120 hover:border-border-strong hover:shadow-sm"
+			className="bg-surface border border-border rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-[border-color,box-shadow] duration-150 hover:border-accent/40 hover:shadow-[0_0_0_1px_var(--accent-glow),0_2px_8px_rgba(0,0,0,0.4)]"
 			onClick={() => onConnect(agent)}
 			role="button"
 			tabIndex={0}
@@ -49,23 +49,23 @@ export function AgentCard({ agent, onConnect }: AgentCardProps) {
 			aria-label={`Connect to ${agent.label ?? agent.agent_id}`}
 		>
 			{/* Header row */}
-			<div className="flex items-center gap-2">
+			<div className="flex items-center gap-2.5">
 				<StatusDot state={online ? "online" : "offline"} size={8} />
-				<span className="font-semibold text-sm flex-1 truncate">
+				<span className="font-semibold text-sm flex-1 truncate text-primary">
 					{agent.label ?? agent.agent_id}
 				</span>
-				<span className="font-mono text-xs text-muted bg-elevated border border-border rounded-sm px-1.5 py-px">
-					{agent.version}
+				<span className="font-mono text-[10px] text-muted bg-elevated border border-border rounded px-1.5 py-0.5 shrink-0">
+					v{agent.version}
 				</span>
 			</div>
 
 			{/* ID */}
-			<p className="font-mono text-xs text-muted truncate">{agent.agent_id}</p>
+			<p className="font-mono text-[11px] text-muted truncate">{agent.agent_id}</p>
 
 			{/* Footer row */}
-			<div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
-				<span className="text-xs text-muted">{agent.ws_url ?? "no url"}</span>
-				<span className="text-xs text-muted">{formatAge(agent.last_seen_at)}</span>
+			<div className="flex items-center justify-between pt-2.5 border-t border-border gap-2">
+				<span className="text-[11px] text-muted truncate">{agent.ws_url ?? "—"}</span>
+				<span className="text-[11px] text-muted shrink-0">{formatAge(agent.last_seen_at)}</span>
 			</div>
 		</article>
 	);
