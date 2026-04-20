@@ -77,7 +77,13 @@ export function DevicePanel() {
 		}
 	}
 
-	const canCapture = isRegistered && typeof navigator.mediaDevices?.getDisplayMedia === "function";
+	const hasWindow = typeof window !== "undefined";
+	const isSecureContext = hasWindow && !!window.isSecureContext;
+	const hasMediaDevices = typeof navigator !== "undefined" && !!navigator.mediaDevices;
+	const hasGetDisplayMedia =
+		typeof navigator !== "undefined" &&
+		typeof navigator.mediaDevices?.getDisplayMedia === "function";
+	const canCapture = isRegistered && hasGetDisplayMedia;
 	const isCapturing = captureState === "active";
 
 	return (
@@ -190,9 +196,27 @@ export function DevicePanel() {
 					</button>
 				</div>
 				{!canCapture && (
-					<p className="text-warn text-xs text-center">
-						Requires HTTPS or localhost — not available over plain HTTP.
-					</p>
+					<div className="text-warn text-xs text-center">
+						{!isSecureContext ? (
+							<p>Requires HTTPS or localhost — secure context required.</p>
+						) : !hasMediaDevices ? (
+							<p>
+								Your browser does not expose{" "}
+								<span className="font-mono">navigator.mediaDevices</span>. Screen capture
+								unavailable.
+							</p>
+						) : !hasGetDisplayMedia ? (
+							<p>
+								This browser doesn't support screen capture (
+								<span className="font-mono">getDisplayMedia</span>). Try Chrome on Android or
+								desktop Chrome/Edge.
+							</p>
+						) : (
+							<p>
+								Screen capture unavailable — check browser permissions or try a different browser.
+							</p>
+						)}
+					</div>
 				)}
 			</div>
 
