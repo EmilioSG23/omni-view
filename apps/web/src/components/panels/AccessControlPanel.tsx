@@ -146,7 +146,7 @@ export function AccessControlPanel() {
 		<div className="flex flex-col gap-4 p-4 bg-surface rounded-xl border border-border h-full">
 			{/* Header */}
 			<div className="flex items-center justify-between gap-2">
-				<h2 className="font-mono text-xs text-secondary tracking-widest uppercase">
+				<h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
 					Access Control
 				</h2>
 				<button
