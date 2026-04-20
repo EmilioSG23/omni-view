@@ -22,14 +22,14 @@ export interface ThemeMeta {
 
 export const THEMES: ThemeMeta[] = [
 	{
-		id: "nocturno",
+		id: "night",
 		name: "Night",
 		description: "Deep dark with an amber accent.",
 		isLight: false,
 		swatches: ["#0c0d0f", "#131416", "#f59e0b", "#e2e4e9"],
 	},
 	{
-		id: "claro",
+		id: "light",
 		name: "Light",
 		description: "High-contrast with an electric blue accent.",
 		isLight: true,

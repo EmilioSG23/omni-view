@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/* CLARO — high-contrast light theme                                           */
+/* LIGHT — high-contrast light theme                                           */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-html[data-theme="claro"] {
+html[data-theme="light"] {
 	/* Backgrounds */
 	--bg-base: #f8f9fc;
 	--bg-surface: #ffffff;

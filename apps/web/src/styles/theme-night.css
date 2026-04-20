@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/* NOCTURNO — default dark theme (preserves original tokens)                  */
+/* NIGHT — default dark theme (preserves original tokens)                  */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-html[data-theme="nocturno"] {
+html[data-theme="night"] {
 	/* Backgrounds */
 	--bg-base: #0c0d0f;
 	--bg-surface: #131416;
