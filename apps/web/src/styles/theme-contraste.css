@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* CONTRASTE — high-contrast accessible theme                                   */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+html[data-theme="contraste"] {
+    /* Backgrounds */
+    --bg-base: #000000;
+    --bg-surface: #111111;
+    --bg-elevated: #1a1a1a;
+    --bg-overlay: #0f0f0f;
+
+    /* Borders */
+    --border: #333333;
+    --border-strong: #666666;
+
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: #dcdcdc;
+    --text-muted: #9e9e9e;
+    --text-inverse: #000000;
+
+    /* Accent — vivid amber */
+    --accent: #FFCC00;
+    --accent-dim: rgba(255, 204, 0, 0.12);
+    --accent-glow: rgba(255, 204, 0, 0.24);
+
+    /* Semantic */
+    --success: #22c55e;
+    --success-dim: rgba(34, 197, 94, 0.12);
+    --error: #ef4444;
+    --error-dim: rgba(239, 68, 68, 0.12);
+    --warn: #f97316;
+    --warn-dim: rgba(249, 115, 22, 0.12);
+    --info: #00B4D8;
+}

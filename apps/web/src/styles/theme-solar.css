@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SOLAR — warm amber/sepia theme                                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+html[data-theme="solar"] {
+	/* Backgrounds */
+	--bg-base: #1c1208;
+	--bg-surface: #261a0d;
+	--bg-elevated: #322312;
+	--bg-overlay: #3f2d18;
+
+	/* Borders */
+	--border: #4a3520;
+	--border-strong: #6b4e2e;
+
+	/* Text */
+	--text-primary: #f5e6c8;
+	--text-secondary: #c9a97d;
+	--text-muted: #7a6145;
+	--text-inverse: #1c1208;
+
+	/* Accent — sunburst orange */
+	--accent: #ff8a00;
+	--accent-dim: rgba(255, 138, 0, 0.18);
+	--accent-glow: rgba(255, 138, 0, 0.38);
+
+	/* Semantic */
+	--success: #4ade80;
+	--success-dim: rgba(74, 222, 128, 0.15);
+	--error: #f87171;
+	--error-dim: rgba(248, 113, 113, 0.15);
+	--warn: #fb923c;
+	--warn-dim: rgba(251, 146, 60, 0.15);
+	--info: #7dd3fc;
+}

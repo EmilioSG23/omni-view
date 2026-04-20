@@ -6,6 +6,9 @@
 		"dev": "cargo run",
 		"build": "cargo build --release",
 		"start": "cargo run --release",
-		"clean": "cargo clean"
+		"clean": "cargo clean",
+		"test": "cargo test",
+		"test:release": "cargo test --release",
+		"test:doc": "cargo test --doc"
 	}
 }

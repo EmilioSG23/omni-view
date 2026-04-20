@@ -1,6 +1,12 @@
-#[derive(Debug)]
+use std::sync::{
+    atomic::{AtomicU32, AtomicU8},
+    Arc,
+};
+
+#[derive(Debug, Clone)]
 pub enum StreamEvent {
-    Frame(Vec<u8>),
+    Init(Arc<Vec<u8>>),
+    Frame(Arc<Vec<u8>>),
     Reinit,
 }
 
@@ -10,6 +16,6 @@ pub trait Encoder: Send {
 
 pub struct EncoderConfig {
     pub encoder: String,
-    pub fps: u32,
-    pub quality: u8,
+    pub fps: Arc<AtomicU32>,
+    pub quality: Arc<AtomicU8>,
 }

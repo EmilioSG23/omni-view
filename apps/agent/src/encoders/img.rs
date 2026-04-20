@@ -1,5 +1,9 @@
 use image::{DynamicImage, ImageBuffer, ImageOutputFormat, Rgb};
 use std::io::Cursor;
+use std::sync::{
+    atomic::{AtomicU8, Ordering},
+    Arc,
+};
 use tokio::sync::mpsc;
 
 use super::StreamEvent;
@@ -8,7 +12,7 @@ pub struct ImageEncoder {
     tx: mpsc::Sender<StreamEvent>,
     width: u32,
     height: u32,
-    quality: u8,
+    quality: Arc<AtomicU8>,
     format: String,
 }
 
@@ -16,18 +20,27 @@ impl ImageEncoder {
     pub fn new(
         width: u32,
         height: u32,
-        quality: u8,
+        quality: Arc<AtomicU8>,
         format: &str,
         tx: mpsc::Sender<StreamEvent>,
     ) -> Self {
-        Self { tx, width, height, quality, format: format.to_owned() }
+        Self {
+            tx,
+            width,
+            height,
+            quality,
+            format: format.to_owned(),
+        }
     }
 }
 
 impl super::Encoder for ImageEncoder {
     fn write_frame(&mut self, frame: &[u8]) -> bool {
-        let encoded = encode(frame, self.width, self.height, self.quality, &self.format);
-        self.tx.blocking_send(StreamEvent::Frame(encoded)).is_ok()
+        let q = self.quality.load(Ordering::Relaxed);
+        let encoded = encode(frame, self.width, self.height, q, &self.format);
+        self.tx
+            .blocking_send(StreamEvent::Frame(Arc::new(encoded)))
+            .is_ok()
     }
 }
 

@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* CLARO — high-contrast light theme                                           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+html[data-theme="claro"] {
+	/* Backgrounds */
+	--bg-base: #f8f9fc;
+	--bg-surface: #ffffff;
+	--bg-elevated: #eef0f6;
+	--bg-overlay: #e4e7f0;
+
+	/* Borders */
+	--border: #dde0ea;
+	--border-strong: #bdc2d4;
+
+	/* Text */
+	--text-primary: #0f1724;
+	--text-secondary: #49546b;
+	--text-muted: #8d96aa;
+	--text-inverse: #ffffff;
+
+	/* Accent — electric blue */
+	--accent: #2563eb;
+	--accent-dim: rgba(37, 99, 235, 0.12);
+	--accent-glow: rgba(37, 99, 235, 0.28);
+
+	/* Semantic */
+	--success: #16a34a;
+	--success-dim: rgba(22, 163, 74, 0.12);
+	--error: #dc2626;
+	--error-dim: rgba(220, 38, 38, 0.12);
+	--warn: #ea580c;
+	--warn-dim: rgba(234, 88, 12, 0.12);
+	--info: #1d4ed8;
+}

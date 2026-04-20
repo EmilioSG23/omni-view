@@ -6,20 +6,70 @@
 		"build": "nest build",
 		"dev": "nest start --watch",
 		"start": "nest start",
-		"start:prod": "node dist/main"
+		"start:prod": "node dist/main",
+		"test": "jest --passWithNoTests",
+		"test:watch": "jest --watch",
+		"test:cov": "jest --coverage",
+		"test:e2e": "jest --config test/jest-e2e.json --forceExit --detectOpenHandles --passWithNoTests"
+	},
+	"jest": {
+		"moduleFileExtensions": [
+			"js",
+			"json",
+			"ts"
+		],
+		"rootDir": "src",
+		"testMatch": [
+			"**/*.spec.ts"
+		],
+		"setupFilesAfterEnv": [
+			"<rootDir>/jest.setup.ts"
+		],
+		"transform": {
+			"^.+\\.(t|j)s$": [
+				"ts-jest",
+				{
+					"tsconfig": "./tsconfig.spec.json"
+				}
+			]
+		},
+		"collectCoverageFrom": [
+			"**/*.(t|j)s"
+		],
+		"coverageDirectory": "../coverage",
+		"testEnvironment": "node",
+		"moduleNameMapper": {
+			"^@omni-view/shared$": "<rootDir>/../../packages/shared/src/index.ts"
+		}
 	},
 	"dependencies": {
 		"@nestjs/common": "^11.0.0",
+		"@nestjs/config": "^3.3.0",
 		"@nestjs/core": "^11.0.0",
 		"@nestjs/platform-express": "^11.0.0",
+		"@nestjs/platform-ws": "^11.0.0",
+		"@nestjs/typeorm": "^11.0.0",
+		"@nestjs/websockets": "^11.0.0",
+		"@omni-view/shared": "workspace:*",
+		"better-sqlite3": "^11.0.0",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.14.1",
 		"reflect-metadata": "^0.2.2",
-		"rxjs": "^7.8.2"
+		"rxjs": "^7.8.2",
+		"typeorm": "^0.3.20",
+		"ws": "^8.18.0"
 	},
 	"devDependencies": {
 		"@nestjs/cli": "^11.0.0",
 		"@nestjs/schematics": "^11.0.0",
+		"@nestjs/testing": "^11.0.0",
+		"@types/better-sqlite3": "^7.6.8",
 		"@types/express": "^5.0.0",
+		"@types/jest": "^29.5.14",
 		"@types/node": "^22.15.3",
+		"@types/ws": "^8.5.10",
+		"jest": "^29.7.0",
+		"ts-jest": "^29.3.2",
 		"typescript": "^6.0.0"
 	}
 }

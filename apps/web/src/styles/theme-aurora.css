@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* AURORA — soft pastel lavender/teal theme                                    */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+html[data-theme="aurora"] {
+    /* Backgrounds */
+    --bg-base: #F7F2FF;
+    --bg-surface: #E9D5FF;
+    --bg-elevated: #E6DBFF;
+    --bg-overlay: #F1EFFF;
+
+    /* Borders */
+    --border: #E0D3FF;
+    --border-strong: #CDBEFF;
+
+    /* Text */
+    --text-primary: #0f1724;
+    --text-secondary: #4b5563;
+    --text-muted: #7c8492;
+    --text-inverse: #ffffff;
+
+    /* Accent — violet */
+    --accent: #7C3AED;
+    --accent-dim: rgba(124, 58, 237, 0.12);
+    --accent-glow: rgba(124, 58, 237, 0.24);
+
+    /* Semantic */
+    --success: #16a34a;
+    --success-dim: rgba(22, 163, 74, 0.12);
+    --error: #dc2626;
+    --error-dim: rgba(220, 38, 38, 0.12);
+    --warn: #f59e0b;
+    --warn-dim: rgba(245, 158, 11, 0.12);
+    --info: #06B6D4;
+}

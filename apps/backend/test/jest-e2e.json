@@ -1,0 +1,18 @@
+{
+	"moduleFileExtensions": ["js", "json", "ts"],
+	"rootDir": "..",
+	"testMatch": ["<rootDir>/test/**/*.e2e-spec.ts"],
+	"transform": {
+		"^.+\\.(t|j)s$": [
+			"ts-jest",
+			{
+				"tsconfig": "./tsconfig.e2e.json"
+			}
+		]
+	},
+	"testEnvironment": "node",
+	"testTimeout": 30000,
+	"moduleNameMapper": {
+		"^@omni-view/shared$": "<rootDir>/src/../../packages/shared/src/index.ts"
+	}
+}
