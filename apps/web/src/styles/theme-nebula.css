@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* NEBULA — dark nebula theme                  */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+html[data-theme="nebula"] {
+    /* Backgrounds */
+    --bg-base: #000823;
+    --bg-surface: #0d152e;
+    --bg-elevated: #07122a;
+    --bg-overlay: rgba(0, 8, 35, 0.7);
+
+    /* Borders */
+    --border: #ffc80040;
+    --border-strong: #ffc80040;
+
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: #cfeff7;
+    --text-muted: #95a6b4;
+    --text-inverse: #000823;
+
+    /* Accent — neon */
+    --accent: #5ae1ff;
+    --accent-dim: rgba(90, 225, 255, 0.12);
+    --accent-glow: rgba(90, 225, 255, 0.24);
+
+    /* Semantic */
+    --success: #22c55e;
+    --success-dim: rgba(34, 197, 94, 0.15);
+    --error: #ef4444;
+    --error-dim: rgba(239, 68, 68, 0.15);
+    --warn: #f97316;
+    --warn-dim: rgba(249, 115, 22, 0.15);
+    --info: #06b6d4;
+}

@@ -13,6 +13,15 @@
 	</head>
 	<body>
 		<div id="root"></div>
+		<!-- Apply persisted theme before first paint to avoid FOUC -->
+		<script>
+			(function () {
+				try {
+					var t = localStorage.getItem("omniview:theme");
+					if (t) document.documentElement.setAttribute("data-theme", t);
+				} catch (e) {}
+			})();
+		</script>
 		<script type="module" src="/src/main.tsx"></script>
 	</body>
 </html>
