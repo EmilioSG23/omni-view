@@ -1,6 +1,6 @@
 @import "tailwindcss";
-@import "@/styles/theme-nocturno.css";
-@import "@/styles/theme-claro.css";
+@import "@/styles/theme-night.css";
+@import "@/styles/theme-light.css";
 @import "@/styles/theme-solar.css";
 @import "@/styles/theme-arrecife.css";
 @import "@/styles/theme-aurora.css";
