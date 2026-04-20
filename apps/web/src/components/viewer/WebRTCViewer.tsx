@@ -1,9 +1,12 @@
 import { useWebRTCViewer } from "@/hooks/viewer/useWebRTCViewer";
 import { ExitFullscreenIcon } from "@/icons/ExitFullscreenIcon";
 import { FullscreenIcon } from "@/icons/FullscreenIcon";
+import { MuteIcon } from "@/icons/MuteIcon";
 import { PauseIcon } from "@/icons/PauseIcon";
 import { PlayIcon } from "@/icons/PlayIcon";
-import type { AgentSummary } from "@omni-view/shared";
+import { VolumeIcon } from "@/icons/VolumeIcon";
+import type { AgentSummary, QualityPreset } from "@omni-view/shared";
+import { QualityBar } from "./QualityBar";
 
 interface WebRTCViewerProps {
 	agent: AgentSummary;
@@ -18,6 +21,10 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 		connectionState,
 		error,
 		paused,
+		muted,
+		volume,
+		setVolume,
+		viewerQuality,
 		isFullscreen,
 		showControls,
 		pendingPassword,
@@ -25,6 +32,8 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 		connect,
 		disconnect,
 		togglePause,
+		toggleMute,
+		setViewerQuality,
 		toggleFullscreen,
 		handleMouseEnter,
 		handleMouseLeave,
@@ -138,24 +147,50 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 							</button>
 						</div>
 
-						{/* Bottom bar — pause on the left, fullscreen on the right */}
+						{/* Bottom bar — pause+mute on the left, quality+fullscreen on the right */}
 						<div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-4 pb-3 pt-10 flex items-end justify-between pointer-events-auto">
-							<button
-								type="button"
-								onClick={togglePause}
-								title={paused ? "Resume" : "Pause"}
-								className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-							>
-								{paused ? <PlayIcon /> : <PauseIcon />}
-							</button>
-							<button
-								type="button"
-								onClick={toggleFullscreen}
-								title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-								className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-							>
-								{isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
-							</button>
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									onClick={togglePause}
+									title={paused ? "Resume" : "Pause"}
+									className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+								>
+									{paused ? <PlayIcon /> : <PauseIcon />}
+								</button>
+								<button
+									type="button"
+									onClick={toggleMute}
+									title={muted ? "Unmute" : "Mute"}
+									className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+								>
+									{muted ? <MuteIcon /> : <VolumeIcon />}
+								</button>
+								{/* Volume slider (0-100) */}
+								<input
+									type="range"
+									min={0}
+									max={100}
+									value={Math.round(volume * 100)}
+									onChange={(e) => setVolume(Number(e.target.value) / 100)}
+									aria-label="Volume"
+									className="w-28 h-1.5 accent-accent"
+								/>
+							</div>
+							<div className="flex items-center gap-2">
+								<QualityBar
+									activePreset={viewerQuality}
+									onSelect={(p) => setViewerQuality(p as Exclude<QualityPreset, "custom">)}
+								/>
+								<button
+									type="button"
+									onClick={toggleFullscreen}
+									title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+									className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+								>
+									{isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
+								</button>
+							</div>
 						</div>
 					</div>
 				)}

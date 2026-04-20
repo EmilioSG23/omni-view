@@ -4,7 +4,7 @@
 
 import { createReceiverPeer, getSignalingUrl } from "@/core/webrtc";
 import { getDeviceId } from "@/utils/device-identity";
-import type { AgentSummary } from "@omni-view/shared";
+import type { AgentSummary, QualityPreset } from "@omni-view/shared";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export type ConnectionState =
@@ -21,14 +21,20 @@ export interface UseWebRTCViewerResult {
 	connectionState: ConnectionState;
 	error: string | null;
 	paused: boolean;
+	muted: boolean;
+	volume: number;
+	setVolume: (v: number) => void;
 	isFullscreen: boolean;
 	showControls: boolean;
 	pendingPassword: string;
+	viewerQuality: Exclude<QualityPreset, "custom"> | null;
 	setPendingPassword: React.Dispatch<React.SetStateAction<string>>;
 	connect: (password: string) => Promise<void>;
 	disconnect: () => void;
 	togglePause: () => void;
+	toggleMute: () => void;
 	toggleFullscreen: () => void;
+	setViewerQuality: (preset: Exclude<QualityPreset, "custom">) => void;
 	handleMouseEnter: () => void;
 	handleMouseLeave: () => void;
 	handleMouseMove: () => void;
@@ -52,6 +58,22 @@ export function useWebRTCViewer(
 	const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [paused, setPaused] = useState(false);
+	const LS_VOLUME_KEY = "omni-view.viewer.volume";
+	const [volume, setVolumeState] = useState<number>(() => {
+		if (typeof window === "undefined") return 1;
+		try {
+			const raw = localStorage.getItem(LS_VOLUME_KEY);
+			if (raw == null) return 1;
+			const n = parseFloat(raw);
+			return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+		} catch {
+			return 1;
+		}
+	});
+	const lastNonZeroRef = useRef<number>(1);
+	const [viewerQuality, setViewerQualityState] = useState<Exclude<QualityPreset, "custom"> | null>(
+		null,
+	);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [showControls, setShowControls] = useState(false);
 
@@ -75,6 +97,8 @@ export function useWebRTCViewer(
 			pc.ontrack = (event) => {
 				if (videoRef.current && event.streams[0]) {
 					videoRef.current.srcObject = event.streams[0];
+					videoRef.current.muted = volume === 0;
+					videoRef.current.volume = volume;
 				}
 			};
 
@@ -238,6 +262,53 @@ export function useWebRTCViewer(
 		}
 	};
 
+	const setVolume = useCallback((v: number) => {
+		const next = Math.max(0, Math.min(1, v));
+		setVolumeState(next);
+		try {
+			localStorage.setItem(LS_VOLUME_KEY, String(next));
+		} catch {}
+		if (next > 0) lastNonZeroRef.current = next;
+		if (videoRef.current) {
+			videoRef.current.volume = next;
+			videoRef.current.muted = next === 0;
+		}
+	}, []);
+
+	const toggleMute = useCallback(() => {
+		const currentlyMuted = videoRef.current ? videoRef.current.muted : volume === 0;
+		if (currentlyMuted) {
+			const restore = lastNonZeroRef.current ?? 1;
+			setVolume(restore);
+		} else {
+			if (volume > 0) lastNonZeroRef.current = volume;
+			setVolume(0);
+		}
+	}, [volume, setVolume]);
+
+	useEffect(() => {
+		const v = videoRef.current;
+		if (!v) return;
+		v.muted = volume === 0;
+		v.volume = volume;
+	}, [volume]);
+
+	const setViewerQuality = useCallback(
+		(preset: Exclude<QualityPreset, "custom">) => {
+			setViewerQualityState(preset);
+			const ws = wsRef.current;
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				ws.send(
+					JSON.stringify({
+						event: "viewer:config",
+						data: { agentId: agent.agent_id, viewerId, preset },
+					}),
+				);
+			}
+		},
+		[agent.agent_id, viewerId],
+	);
+
 	const toggleFullscreen = () => {
 		const el = containerRef.current;
 		if (!el) return;
@@ -321,6 +392,10 @@ export function useWebRTCViewer(
 		connectionState,
 		error,
 		paused,
+		muted: volume === 0,
+		volume,
+		setVolume,
+		viewerQuality,
 		isFullscreen,
 		showControls,
 		pendingPassword,
@@ -328,6 +403,8 @@ export function useWebRTCViewer(
 		connect,
 		disconnect,
 		togglePause,
+		toggleMute,
+		setViewerQuality,
 		toggleFullscreen,
 		handleMouseEnter,
 		handleMouseLeave,
