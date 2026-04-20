@@ -1,5 +1,4 @@
-const BASE =
-	(window as { electronAPI?: { backendUrl?: string } }).electronAPI?.backendUrl ?? "/api";
+import { BACKEND_URL as BASE } from "@/consts";
 
 /** Compute SHA-256 hex of a string using the Web Crypto API. */
 export async function sha256hex(text: string): Promise<string> {

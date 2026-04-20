@@ -1,5 +1,4 @@
-const BASE =
-	(window as { electronAPI?: { backendUrl?: string } }).electronAPI?.backendUrl ?? "/api";
+import { BACKEND_URL as BASE } from "@/consts";
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(`${BASE}${path}`, {
