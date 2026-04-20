@@ -92,9 +92,11 @@ export function AccessControlPanel() {
 					onClick={() => void load()}
 					disabled={loading}
 					aria-label="Refresh"
-					className="w-6 h-6 flex items-center justify-center rounded text-muted hover:text-secondary transition-colors cursor-pointer disabled:opacity-40"
+					className="group w-6 h-6 flex items-center justify-center rounded text-muted hover:text-secondary transition-colors cursor-pointer disabled:opacity-40"
 				>
-					<RefreshIcon className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+					<RefreshIcon
+						className={`w-3.5 h-3.5 group-hover:-rotate-90 transition ${loading ? "animate-spin" : ""}`}
+					/>
 				</button>
 			</div>
 

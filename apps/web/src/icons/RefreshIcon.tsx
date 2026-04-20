@@ -8,20 +8,11 @@ export function RefreshIcon({ className = "w-4 h-4" }: { className?: string }) {
 			aria-hidden="true"
 		>
 			<path
-				d="M20 12a8 8 0 10-2.1 5.1L20 20v-4.9A7.9 7.9 0 0020 12z"
+				d="M12 21C16.9706 21 21 16.9706 21 12C21 9.69494 20.1334 7.59227 18.7083 6L16 3M12 3C7.02944 3 3 7.02944 3 12C3 14.3051 3.86656 16.4077 5.29168 18L8 21M21 3H16M16 3V8M3 21H8M8 21V16"
 				stroke="currentColor"
-				strokeWidth={1.5}
+				strokeWidth="2"
 				strokeLinecap="round"
 				strokeLinejoin="round"
-				fill="none"
-			/>
-			<path
-				d="M20 4v6h-6"
-				stroke="currentColor"
-				strokeWidth={1.5}
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				fill="none"
 			/>
 		</svg>
 	);

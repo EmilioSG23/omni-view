@@ -141,9 +141,9 @@ export function DevicePanel() {
 						onClick={handleRegenerate}
 						disabled={saving}
 						title="Regenerate password"
-						className="px-2 py-1.5 rounded-lg bg-elevated border border-border hover:bg-overlay text-muted text-xs font-medium transition-colors"
+						className="group px-2 py-1.5 rounded-lg bg-elevated border border-border hover:bg-overlay text-muted text-xs font-medium transition-colors"
 					>
-						<RefreshIcon className="w-4 h-4" />
+						<RefreshIcon className="w-4 h-4 group-hover:-rotate-90 transition" />
 					</button>
 					<button
 						type="button"
