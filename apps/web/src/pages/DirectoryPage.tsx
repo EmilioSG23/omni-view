@@ -26,7 +26,6 @@ export function DirectoryPage({ onConnect }: DirectoryPageProps) {
 
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
-			{/* ─── Header ────────────────────────────────────────────────── */}
 			<header className="border-b border-border shrink-0">
 				<div className="mx-auto flex w-full h-full max-w-7xl items-center justify-between gap-4 px-5 py-2 md:px-7">
 					<Wordmark />
@@ -72,9 +71,9 @@ export function DirectoryPage({ onConnect }: DirectoryPageProps) {
 
 function Wordmark() {
 	return (
-		<div className="flex items-center gap-2">
+		<div className="flex items-center gap-2 pointer-events-none">
 			<OmniViewIcon className="h-6 w-6 text-accent shrink-0" />
-			<span className="font-mono font-semibold text-sm tracking-[0.08em] text-primary leading-none">
+			<span className="font-mono font-semibold text-sm tracking-[0.08em] text-primary leading-none select-none">
 				OMNI<span className="text-accent">VIEW</span>
 			</span>
 		</div>
