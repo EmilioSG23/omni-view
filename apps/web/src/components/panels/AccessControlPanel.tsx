@@ -5,6 +5,7 @@
 import { useAccessControl } from "@/hooks/panels/useAccessControl";
 import { RefreshIcon } from "@/icons/RefreshIcon";
 import { TrashIcon } from "@/icons/TrashIcon";
+import { formatDeviceId } from "@/utils/format";
 import { useState } from "react";
 
 type Tab = "allowed" | "blocked";
@@ -55,7 +56,7 @@ function EntryRow({
 					</p>
 				)}
 				<p className="text-xs font-mono text-muted truncate" title={deviceId}>
-					{deviceId}
+					{formatDeviceId(deviceId)}
 				</p>
 			</div>
 			<button

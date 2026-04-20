@@ -5,6 +5,7 @@ import { ConnectToAgentForm } from "@/components/panels/ConnectToAgentForm";
 import { ConnectedViewersList } from "@/components/panels/ConnectedViewersList";
 import { DevicePanel } from "@/components/panels/DevicePanel";
 import { useAgentHistory } from "@/hooks/panels/useAgentHistory";
+import { OmniViewIcon } from "@/icons/OmniViewIcon";
 import type { AgentSummary } from "@omni-view/shared";
 import { useCallback } from "react";
 
@@ -26,37 +27,41 @@ export function DirectoryPage({ onConnect }: DirectoryPageProps) {
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
 			{/* ─── Header ────────────────────────────────────────────────── */}
-			<header className="border-b border-border flex items-center justify-between px-5 py-2 md:px-7 gap-4 shrink-0">
-				<Wordmark />
-				<HeaderActions />
+			<header className="border-b border-border shrink-0">
+				<div className="mx-auto flex w-full h-full max-w-7xl items-center justify-between gap-4 px-5 py-2 md:px-7">
+					<Wordmark />
+					<HeaderActions />
+				</div>
 			</header>
 
 			<div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
-				<div className="flex flex-col md:grid md:h-full md:grid-cols-[24rem_1fr] md:grid-rows-[auto_minmax(0,1fr)] gap-3 p-3 md:gap-4 md:p-4">
-					{/* ── Connect form — mobile: first; desktop: col-2 row-1 ─── */}
-					<main className="order-first md:order-0 min-w-0 md:col-start-2 md:row-start-1 md:overflow-y-auto">
-						<ConnectToAgentForm onConnect={handleConnect} />
-					</main>
+				<div className="mx-auto h-full w-full max-w-7xl">
+					<div className="flex flex-col md:grid md:h-full md:grid-cols-[24rem_1fr] md:grid-rows-[auto_minmax(0,1fr)] gap-3 p-3 md:gap-4 md:p-4">
+						{/* ── Connect form — mobile: first; desktop: col-2 row-1 ─── */}
+						<main className="order-first md:order-0 min-w-0 md:col-start-2 md:row-start-1 md:overflow-y-auto">
+							<ConnectToAgentForm onConnect={handleConnect} />
+						</main>
 
-					{/* ── Left column: Device + Access — col-1, spans both rows ── */}
-					<div className="flex flex-col gap-3 md:gap-4 md:col-start-1 md:row-start-1 md:row-span-2 md:overflow-y-auto">
-						<DevicePanel />
-						<div className="flex-1 min-h-0 overflow-y-auto">
-							<AccessControlPanel />
+						{/* ── Left column: Device + Access — col-1, spans both rows ── */}
+						<div className="flex flex-col gap-3 md:gap-4 md:col-start-1 md:row-start-1 md:row-span-2 md:overflow-y-auto">
+							<DevicePanel />
+							<div className="flex-1 min-h-0 overflow-y-auto">
+								<AccessControlPanel />
+							</div>
 						</div>
-					</div>
 
-					{/* ── Bottom row: History + Viewers — col-2 row-2 ────────── */}
-					<div className="md:col-start-2 md:row-start-2 flex flex-col lg:flex-row gap-3 md:gap-4 md:overflow-hidden">
-						<div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
-							<AgentHistoryPanel
-								entries={entries}
-								onConnect={handleConnect}
-								onRemove={removeEntry}
-							/>
-						</div>
-						<div className="flex-1 min-w-0 flex flex-col">
-							<ConnectedViewersList />
+						{/* ── Bottom row: History + Viewers — col-2 row-2 ────────── */}
+						<div className="md:col-start-2 md:row-start-2 flex flex-col lg:flex-row gap-3 md:gap-4 md:overflow-hidden">
+							<div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
+								<AgentHistoryPanel
+									entries={entries}
+									onConnect={handleConnect}
+									onRemove={removeEntry}
+								/>
+							</div>
+							<div className="flex-1 min-w-0 flex flex-col">
+								<ConnectedViewersList />
+							</div>
 						</div>
 					</div>
 				</div>
@@ -67,8 +72,11 @@ export function DirectoryPage({ onConnect }: DirectoryPageProps) {
 
 function Wordmark() {
 	return (
-		<span className="font-mono font-semibold text-sm tracking-[0.08em] text-primary">
-			OMNI<span className="text-accent">VIEW</span>
-		</span>
+		<div className="flex items-center gap-2">
+			<OmniViewIcon className="h-6 w-6 text-accent shrink-0" />
+			<span className="font-mono font-semibold text-sm tracking-[0.08em] text-primary leading-none">
+				OMNI<span className="text-accent">VIEW</span>
+			</span>
+		</div>
 	);
 }

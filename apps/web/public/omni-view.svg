@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64" role="img" aria-hidden="true">
+  <title>OmniView</title>
+  <style>
+    :root { --icon-color: #0f1724; }
+    @media (prefers-color-scheme: dark) { :root { --icon-color: #ffffff; } }
+    svg { display: block; }
+    .icon { stroke: var(--icon-color); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+
+  <rect x="2" y="4" width="20" height="12" rx="2" class="icon" />
+  <circle cx="12" cy="10" r="3.5" class="icon" />
+  <path d="M8 18h8" class="icon" />
+</svg>

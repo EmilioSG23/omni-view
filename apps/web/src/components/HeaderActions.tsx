@@ -1,4 +1,5 @@
-import { ThemeModal } from "@/components/ThemeModal";
+import { OmniViewInfoModal } from "@/components/modals/OmniViewInfoModal";
+import { ThemeModal } from "@/components/modals/ThemeModal";
 import { GIT_REPO_URL } from "@/consts";
 import { useModal } from "@/hooks/useModal";
 import { GithubIcon } from "@/icons/Github";
@@ -12,6 +13,16 @@ export function HeaderActions() {
 
 	return (
 		<div className="flex items-center gap-2 h-full">
+			{/* Info */}
+			<button
+				type="button"
+				onClick={() => open(<OmniViewInfoModal />, "44rem")}
+				aria-label="Open info page"
+				title="Open info page"
+				className={BUTTON_CLASS}
+			>
+				?
+			</button>
 			{/* GitHub */}
 			<a
 				href={GIT_REPO_URL}
