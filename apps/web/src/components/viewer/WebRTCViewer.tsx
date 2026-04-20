@@ -1,10 +1,9 @@
-import type { AgentSummary } from "@omni-view/shared";
+import { useWebRTCViewer } from "@/hooks/viewer/useWebRTCViewer";
 import { ExitFullscreenIcon } from "@/icons/ExitFullscreenIcon";
 import { FullscreenIcon } from "@/icons/FullscreenIcon";
 import { PauseIcon } from "@/icons/PauseIcon";
 import { PlayIcon } from "@/icons/PlayIcon";
-import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
-
+import type { AgentSummary } from "@omni-view/shared";
 
 interface WebRTCViewerProps {
 	agent: AgentSummary;
@@ -147,11 +146,7 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 								title={paused ? "Resume" : "Pause"}
 								className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
 							>
-								{paused ? (
-									<PlayIcon />
-								) : (
-									<PauseIcon />
-								)}
+								{paused ? <PlayIcon /> : <PauseIcon />}
 							</button>
 							<button
 								type="button"
@@ -159,11 +154,7 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 								title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
 								className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
 							>
-								{isFullscreen ? (
-									<ExitFullscreenIcon />
-								) : (
-									<FullscreenIcon />
-								)}
+								{isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
 							</button>
 						</div>
 					</div>

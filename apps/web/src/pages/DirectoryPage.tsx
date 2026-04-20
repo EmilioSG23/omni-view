@@ -4,7 +4,7 @@ import { AgentHistoryPanel } from "@/components/panels/AgentHistoryPanel";
 import { ConnectToAgentForm } from "@/components/panels/ConnectToAgentForm";
 import { ConnectedViewersList } from "@/components/panels/ConnectedViewersList";
 import { DevicePanel } from "@/components/panels/DevicePanel";
-import { useAgentHistory } from "@/hooks/useAgentHistory";
+import { useAgentHistory } from "@/hooks/panels/useAgentHistory";
 import type { AgentSummary } from "@omni-view/shared";
 import { useCallback } from "react";
 

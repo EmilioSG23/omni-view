@@ -1,4 +1,4 @@
-import { useWebRTCViewer } from "@/hooks/useWebRTCViewer";
+import { useWebRTCViewer } from "@/hooks/viewer/useWebRTCViewer";
 import { ExitFullscreenIcon } from "@/icons/ExitFullscreenIcon";
 import { FullscreenIcon } from "@/icons/FullscreenIcon";
 import { PauseIcon } from "@/icons/PauseIcon";

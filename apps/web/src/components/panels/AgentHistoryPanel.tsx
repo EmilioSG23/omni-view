@@ -1,10 +1,11 @@
 import { PasswordPrompt } from "@/components/PasswordPrompt";
-import type { AgentHistoryEntry } from "@/hooks/useAgentHistory";
+import type { AgentHistoryEntry } from "@/hooks/panels/useAgentHistory";
 import { useModal } from "@/hooks/useModal";
 import { agentApi } from "@/services/agent-api";
 import { formatAge, formatDeviceId } from "@/utils/format";
 import type { AgentSummary } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 function HistoryRow({
 	entry,
 	connecting,

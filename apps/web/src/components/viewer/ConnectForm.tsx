@@ -1,6 +1,6 @@
 // ─── Connect form with whitelist status ──────────────────────────────────────
 
-import { useWhitelistCheck } from "@/hooks/useWhitelistCheck";
+import { useWhitelistCheck } from "@/hooks/panels/useWhitelistCheck";
 import { SpinnerIcon } from "@/icons/SpinnerIcon";
 import { formatDeviceId } from "@/utils/format";
 import type { AgentSummary } from "@omni-view/shared";

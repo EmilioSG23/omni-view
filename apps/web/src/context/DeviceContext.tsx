@@ -1,7 +1,7 @@
 import { BROWSER_AGENT_VERSION, PASSWORD_STORAGE_KEY } from "@/consts";
 import { sha256hex } from "@/core/webrtc";
 import { useNotifications } from "@/hooks/useNotifications";
-import { type CaptureState, useWebRTCHost } from "@/hooks/useWebRTCHost";
+import { type CaptureState, useWebRTCHost } from "@/hooks/viewer/useWebRTCHost";
 import { agentApi } from "@/services/agent-api";
 import { getDeviceId } from "@/utils/device-identity";
 import {
@@ -14,7 +14,7 @@ import {
 	useState,
 } from "react";
 
-export type { CaptureState } from "@/hooks/useWebRTCHost";
+export type { CaptureState } from "@/hooks/viewer/useWebRTCHost";
 
 import type { ViewerInfo } from "@omni-view/shared";
 
