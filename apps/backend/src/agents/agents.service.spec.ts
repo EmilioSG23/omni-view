@@ -1,9 +1,10 @@
+import { AgentEntity } from "@/agents/agent.entity";
+import { AgentsService } from "@/agents/agents.service";
+import { BlacklistEntity } from "@/agents/blacklist.entity";
+import { WhitelistEntity } from "@/agents/whitelist.entity";
 import { NotFoundException } from "@nestjs/common";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { Test, TestingModule } from "@nestjs/testing";
-import { AgentsService } from "./agents.service";
-import { AgentEntity } from "./agent.entity";
-import { WhitelistEntity } from "./whitelist.entity";
+import { getRepositoryToken } from "@nestjs/typeorm";
 
 // ---------------------------------------------------------------------------
 // Minimal repository mock factory
@@ -22,16 +23,19 @@ describe("AgentsService", () => {
 	let service: AgentsService;
 	let agentsRepo: ReturnType<typeof mockRepo<AgentEntity>>;
 	let whitelistRepo: ReturnType<typeof mockRepo<WhitelistEntity>>;
+	let blacklistRepo: ReturnType<typeof mockRepo<BlacklistEntity>>;
 
 	beforeEach(async () => {
 		agentsRepo = mockRepo<AgentEntity>();
 		whitelistRepo = mockRepo<WhitelistEntity>();
+		blacklistRepo = mockRepo<BlacklistEntity>();
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				AgentsService,
 				{ provide: getRepositoryToken(AgentEntity), useValue: agentsRepo },
 				{ provide: getRepositoryToken(WhitelistEntity), useValue: whitelistRepo },
+				{ provide: getRepositoryToken(BlacklistEntity), useValue: blacklistRepo },
 			],
 		}).compile();
 

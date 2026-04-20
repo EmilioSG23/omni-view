@@ -1,6 +1,6 @@
+import { WsGateway } from "@/ws/ws.gateway";
 import type { AgentNotification } from "@omni-view/shared";
 import { WebSocket } from "ws";
-import { WsGateway } from "./ws.gateway";
 
 /** Minimal fake WebSocket — only the surface WsGateway touches.
  * Must include `OPEN` as an instance property because the gateway checks

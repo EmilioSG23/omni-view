@@ -1,11 +1,11 @@
+import { AgentEntity } from "@/agents/agent.entity";
+import { AddToBlacklistDto, AddToWhitelistDto, RegisterAgentDto } from "@/agents/agents.dto";
+import { BlacklistEntity } from "@/agents/blacklist.entity";
+import { WhitelistEntity } from "@/agents/whitelist.entity";
+import logger from "@/common/custom-logger.service";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import logger from "../common/custom-logger.service";
-import { AgentEntity } from "./agent.entity";
-import { AddToBlacklistDto, AddToWhitelistDto, RegisterAgentDto } from "./agents.dto";
-import { BlacklistEntity } from "./blacklist.entity";
-import { WhitelistEntity } from "./whitelist.entity";
 
 @Injectable()
 export class AgentsService {

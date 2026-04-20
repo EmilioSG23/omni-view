@@ -1,3 +1,5 @@
+import { BlacklistEntity } from "@/agents/blacklist.entity";
+import { WhitelistEntity } from "@/agents/whitelist.entity";
 import {
 	Column,
 	CreateDateColumn,
@@ -6,8 +8,6 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from "typeorm";
-import { BlacklistEntity } from "./blacklist.entity";
-import { WhitelistEntity } from "./whitelist.entity";
 
 @Entity("agents")
 export class AgentEntity {

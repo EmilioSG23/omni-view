@@ -1,4 +1,4 @@
-import { hashPassword, generateSessionPassword } from "./crypto";
+import { generateSessionPassword, hashPassword } from "@/common/utils/crypto";
 
 describe("hashPassword", () => {
 	it("returns a 64-char hex string (SHA-256)", () => {

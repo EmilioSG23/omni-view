@@ -1,3 +1,5 @@
+import { AgentsService } from "@/agents/agents.service";
+import logger from "@/common/custom-logger.service";
 import { Inject, forwardRef } from "@nestjs/common";
 import {
 	ConnectedSocket,
@@ -12,8 +14,6 @@ import type { AgentNotification, ViewerInfo } from "@omni-view/shared";
 import { SIGNALING } from "@omni-view/shared";
 import { createHash } from "crypto";
 import { Server, WebSocket } from "ws";
-import { AgentsService } from "../agents/agents.service";
-import logger from "../common/custom-logger.service";
 
 interface ViewerMeta {
 	agentId: string;

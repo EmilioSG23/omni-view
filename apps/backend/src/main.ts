@@ -1,9 +1,9 @@
+import { AppModule } from "@/app.module";
+import logger from "@/common/custom-logger.service";
+import { HttpExceptionFilter } from "@/common/filters/http-exception.filter";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { WsAdapter } from "@nestjs/platform-ws";
-import { AppModule } from "./app.module";
-import logger from "./common/custom-logger.service";
-import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule);

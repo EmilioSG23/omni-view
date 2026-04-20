@@ -11,6 +11,9 @@
 		"allowSyntheticDefaultImports": true,
 		"target": "ES2022",
 		"outDir": "./dist",
+		"paths": {
+			"@/*": ["./src/*"]
+		},
 		"rootDir": "."
 	},
 	"include": ["src/**/*", "test/**/*", "src/**/*.spec.ts", "src/**/*.test.ts"],

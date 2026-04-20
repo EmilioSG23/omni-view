@@ -1,3 +1,17 @@
+import { AgentClientService } from "@/agents/agent-client.service";
+import {
+	AddToBlacklistDto,
+	AddToWhitelistDto,
+	CheckBlacklistQueryDto,
+	CheckWhitelistQueryDto,
+	ConnectAgentDto,
+	RegisterAgentDto,
+} from "@/agents/agents.dto";
+import { toAgentSummary } from "@/agents/agents.mapper";
+import { AgentSummaryDto, RegisterAgentResponseDto } from "@/agents/agents.responses";
+import { AgentsService } from "@/agents/agents.service";
+import { hashPassword } from "@/common/utils/crypto";
+import { WsGateway } from "@/ws/ws.gateway";
 import {
 	Body,
 	Controller,
@@ -10,20 +24,6 @@ import {
 	Post,
 	Query,
 } from "@nestjs/common";
-import { hashPassword } from "../common/utils/crypto";
-import { WsGateway } from "../ws/ws.gateway";
-import { AgentClientService } from "./agent-client.service";
-import {
-	AddToBlacklistDto,
-	AddToWhitelistDto,
-	CheckBlacklistQueryDto,
-	CheckWhitelistQueryDto,
-	ConnectAgentDto,
-	RegisterAgentDto,
-} from "./agents.dto";
-import { toAgentSummary } from "./agents.mapper";
-import { AgentSummaryDto, RegisterAgentResponseDto } from "./agents.responses";
-import { AgentsService } from "./agents.service";
 
 @Controller("agents")
 export class AgentsController {

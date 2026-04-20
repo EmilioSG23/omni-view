@@ -1,5 +1,5 @@
-import { AgentEntity } from "./agent.entity";
-import { AgentSummaryDto } from "./agents.responses";
+import { AgentEntity } from "@/agents/agent.entity";
+import { AgentSummaryDto } from "@/agents/agents.responses";
 
 /** Maps an AgentEntity to the public AgentSummaryDto (no internal fields exposed). */
 export function toAgentSummary(entity: AgentEntity): AgentSummaryDto {

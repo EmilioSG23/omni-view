@@ -1,10 +1,10 @@
+import { AgentClientService } from "@/agents/agent-client.service";
+import { AgentEntity } from "@/agents/agent.entity";
+import { AgentsController } from "@/agents/agents.controller";
+import { AgentsService } from "@/agents/agents.service";
+import { WsGateway } from "@/ws/ws.gateway";
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { WsGateway } from "../ws/ws.gateway";
-import { AgentClientService } from "./agent-client.service";
-import { AgentEntity } from "./agent.entity";
-import { AgentsController } from "./agents.controller";
-import { AgentsService } from "./agents.service";
 
 // ---------------------------------------------------------------------------
 // Mock factories
@@ -58,13 +58,13 @@ describe("AgentsController", () => {
 
 	describe("register", () => {
 		it("delegates to AgentsService.register and returns result", async () => {
-			const saved = { agent_id: "uuid-1", version: "1.0.0" } as AgentEntity;
+			const saved = { agent_id: "uuid-1", version: "1.0.0", registered_at: new Date() } as AgentEntity;
 			agentsService.register.mockResolvedValue(saved);
 
 			const result = await controller.register({ agent_id: "uuid-1", version: "1.0.0" });
 
 			expect(agentsService.register).toHaveBeenCalledWith({ agent_id: "uuid-1", version: "1.0.0" });
-			expect(result).toBe(saved);
+			expect(result).toEqual({ agent_id: saved.agent_id, registered_at: saved.registered_at.toISOString() });
 		});
 	});
 
@@ -74,12 +74,12 @@ describe("AgentsController", () => {
 
 	describe("findAll", () => {
 		it("returns list from AgentsService.findAll", async () => {
-			const agents = [{ agent_id: "a" }, { agent_id: "b" }] as AgentEntity[];
+			const agents = [{ agent_id: "a", registered_at: new Date(), last_seen_at: new Date() }, { agent_id: "b", registered_at: new Date(), last_seen_at: new Date() }] as AgentEntity[];
 			agentsService.findAll.mockResolvedValue(agents);
 
 			const result = await controller.findAll();
 
-			expect(result).toBe(agents);
+			expect(result).toEqual(agents.map(a => ({ agent_id: a.agent_id, registered_at: a.registered_at.toISOString(), last_seen_at: a.last_seen_at.toISOString() })));
 		});
 	});
 
@@ -89,12 +89,12 @@ describe("AgentsController", () => {
 
 	describe("findOne", () => {
 		it("returns agent for valid id", async () => {
-			const agent = { agent_id: "uuid-1" } as AgentEntity;
+			const agent = { agent_id: "uuid-1", registered_at: new Date(), last_seen_at: new Date() } as AgentEntity;
 			agentsService.findOne.mockResolvedValue(agent);
 
 			const result = await controller.findOne("uuid-1");
 
-			expect(result).toBe(agent);
+			expect(result).toEqual({ agent_id: agent.agent_id, registered_at: agent.registered_at.toISOString(), last_seen_at: agent.last_seen_at.toISOString() });
 		});
 
 		it("propagates NotFoundException from service", async () => {
@@ -124,3 +124,7 @@ describe("AgentsController", () => {
 		});
 	});
 });
+
+
+
+

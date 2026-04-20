@@ -1,4 +1,4 @@
-import logger from "./common/custom-logger.service";
+import logger from "@/common/custom-logger.service";
 
 beforeAll(() => {
 	jest.spyOn(logger, "log").mockImplementation(() => {});

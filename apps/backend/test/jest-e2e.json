@@ -13,6 +13,7 @@
 	"testEnvironment": "node",
 	"testTimeout": 30000,
 	"moduleNameMapper": {
-		"^@omni-view/shared$": "<rootDir>/src/../../packages/shared/src/index.ts"
+		"^@omni-view/shared$": "<rootDir>/../../packages/shared/src/index.ts",
+		"^@/(.*)$": "<rootDir>/src/$1"
 	}
 }

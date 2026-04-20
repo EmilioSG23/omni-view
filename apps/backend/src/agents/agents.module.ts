@@ -1,13 +1,13 @@
+import { AgentClientService } from "@/agents/agent-client.service";
+import { AgentEntity } from "@/agents/agent.entity";
+import { AgentsController } from "@/agents/agents.controller";
+import { AgentsService } from "@/agents/agents.service";
+import { BlacklistEntity } from "@/agents/blacklist.entity";
+import { WhitelistEntity } from "@/agents/whitelist.entity";
+import { FramesModule } from "@/frames/frames.module";
+import { WsModule } from "@/ws/ws.module";
 import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { FramesModule } from "../frames/frames.module";
-import { WsModule } from "../ws/ws.module";
-import { AgentClientService } from "./agent-client.service";
-import { AgentEntity } from "./agent.entity";
-import { AgentsController } from "./agents.controller";
-import { AgentsService } from "./agents.service";
-import { BlacklistEntity } from "./blacklist.entity";
-import { WhitelistEntity } from "./whitelist.entity";
 
 @Module({
 	imports: [

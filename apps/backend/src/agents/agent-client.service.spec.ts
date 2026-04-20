@@ -1,6 +1,6 @@
-import { AgentClientService } from "./agent-client.service";
-import { WsGateway } from "../ws/ws.gateway";
-import { FramesService } from "../frames/frames.service";
+import { AgentClientService } from "@/agents/agent-client.service";
+import { FramesService } from "@/frames/frames.service";
+import { WsGateway } from "@/ws/ws.gateway";
 import WebSocket from "ws";
 
 jest.mock("ws");

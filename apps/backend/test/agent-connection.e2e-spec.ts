@@ -16,13 +16,13 @@
  * 6. Multiple simultaneous agent connections are managed independently
  */
 
+import { AppModule } from "@/app.module";
+import { hashPassword } from "@/common/utils/crypto";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { WsAdapter } from "@nestjs/platform-ws";
 import { randomUUID } from "node:crypto";
 import WebSocket, { AddressInfo, Server as WsServer } from "ws";
-import { AppModule } from "../src/app.module";
-import { hashPassword } from "../src/common/utils/crypto";
 
 // ---------------------------------------------------------------------------
 // Helpers

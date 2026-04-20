@@ -1,5 +1,5 @@
+import { AgentEntity } from "@/agents/agent.entity";
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { AgentEntity } from "./agent.entity";
 
 @Entity("blacklist")
 export class BlacklistEntity {

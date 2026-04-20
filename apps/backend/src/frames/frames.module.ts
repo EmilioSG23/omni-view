@@ -1,7 +1,7 @@
+import { FrameEntity } from "@/frames/frame.entity";
+import { FramesService } from "@/frames/frames.service";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { FrameEntity } from "./frame.entity";
-import { FramesService } from "./frames.service";
 
 @Module({
 	imports: [TypeOrmModule.forFeature([FrameEntity])],

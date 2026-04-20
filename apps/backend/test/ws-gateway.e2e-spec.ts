@@ -15,12 +15,12 @@
  * 5. Disconnecting a client removes it from subscriptions automatically
  */
 
+import { AppModule } from "@/app.module";
+import { WsGateway } from "@/ws/ws.gateway";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { WsAdapter } from "@nestjs/platform-ws";
 import WebSocket from "ws";
-import { AppModule } from "../src/app.module";
-import { WsGateway } from "../src/ws/ws.gateway";
 
 // ---------------------------------------------------------------------------
 // Helpers
