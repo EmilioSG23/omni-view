@@ -1,3 +1,4 @@
+import type { AgentNotification } from "@omni-view/shared";
 import { WebSocket } from "ws";
 import { WsGateway } from "./ws.gateway";
 
@@ -37,7 +38,7 @@ describe("WsGateway", () => {
 			const ws = makeFakeWs();
 			gateway.handleSubscribe(ws, "agent-1");
 
-			gateway.notifyAgentSubscribers("agent-1", { type: "ping" });
+			gateway.notifyAgentSubscribers("agent-1", { type: "ping" } as unknown as AgentNotification);
 			expect(ws.send).toHaveBeenCalledTimes(1);
 			expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: "ping" }));
 		});
@@ -47,10 +48,10 @@ describe("WsGateway", () => {
 			gateway.handleSubscribe(ws, "agent-1");
 			gateway.handleSubscribe(ws, "agent-2");
 
-			gateway.notifyAgentSubscribers("agent-1", { type: "ping" });
+			gateway.notifyAgentSubscribers("agent-1", { type: "ping" } as unknown as AgentNotification);
 			expect(ws.send).not.toHaveBeenCalled();
 
-			gateway.notifyAgentSubscribers("agent-2", { type: "ping" });
+			gateway.notifyAgentSubscribers("agent-2", { type: "ping" } as unknown as AgentNotification);
 			expect(ws.send).toHaveBeenCalledTimes(1);
 		});
 	});
@@ -61,7 +62,7 @@ describe("WsGateway", () => {
 			gateway.handleSubscribe(ws, "agent-1");
 			gateway.handleUnsubscribe(ws);
 
-			gateway.notifyAgentSubscribers("agent-1", { type: "ping" });
+			gateway.notifyAgentSubscribers("agent-1", { type: "ping" } as unknown as AgentNotification);
 			expect(ws.send).not.toHaveBeenCalled();
 		});
 
@@ -77,7 +78,7 @@ describe("WsGateway", () => {
 			gateway.handleSubscribe(ws, "agent-1");
 			gateway.handleDisconnect(ws);
 
-			gateway.notifyAgentSubscribers("agent-1", { type: "ping" });
+			gateway.notifyAgentSubscribers("agent-1", { type: "ping" } as unknown as AgentNotification);
 			expect(ws.send).not.toHaveBeenCalled();
 		});
 	});
@@ -89,7 +90,7 @@ describe("WsGateway", () => {
 			gateway.handleSubscribe(ws1, "agent-1");
 			gateway.handleSubscribe(ws2, "agent-2");
 
-			gateway.notifyAgentSubscribers("agent-1", { type: "frame" });
+			gateway.notifyAgentSubscribers("agent-1", { type: "frame" } as unknown as AgentNotification);
 
 			expect(ws1.send).toHaveBeenCalledTimes(1);
 			expect(ws2.send).not.toHaveBeenCalled();
@@ -98,7 +99,7 @@ describe("WsGateway", () => {
 		it("serialises the event to JSON before sending", () => {
 			const ws = makeFakeWs();
 			gateway.handleSubscribe(ws, "agent-1");
-			const event = { type: "agent_online", agentId: "agent-1" };
+			const event = { type: "agent_online", agentId: "agent-1" } as const;
 
 			gateway.notifyAgentSubscribers("agent-1", event);
 
@@ -114,7 +115,7 @@ describe("WsGateway", () => {
 			gateway.handleSubscribe(wsClosed, "agent-1");
 			gateway.handleSubscribe(wsConnecting, "agent-1");
 
-			gateway.notifyAgentSubscribers("agent-1", { type: "ping" });
+			gateway.notifyAgentSubscribers("agent-1", { type: "ping" } as unknown as AgentNotification);
 
 			expect(wsOpen.send).toHaveBeenCalledTimes(1);
 			expect(wsClosed.send).not.toHaveBeenCalled();
@@ -123,7 +124,11 @@ describe("WsGateway", () => {
 
 		it("does nothing when there are no subscribers for the agentId", () => {
 			// Should not throw on an empty or non-matching map
-			expect(() => gateway.notifyAgentSubscribers("unknown-agent", { type: "ping" })).not.toThrow();
+			expect(() =>
+				gateway.notifyAgentSubscribers("unknown-agent", {
+					type: "ping",
+				} as unknown as AgentNotification),
+			).not.toThrow();
 		});
 	});
 });

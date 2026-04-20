@@ -5,7 +5,7 @@
 import { createSenderPeer, getSignalingUrl, sha256hex } from "@/core/webrtc";
 import { agentApi } from "@/services/agent-api";
 import type { CaptureSettings, ViewerInfo } from "@omni-view/shared";
-import { QUALITY_PRESETS } from "@omni-view/shared";
+import { QUALITY_PRESETS, SIGNALING } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CaptureState = "idle" | "requesting" | "active" | "error";
@@ -66,7 +66,7 @@ export function useWebRTCHost(
 
 			ws.onopen = async () => {
 				const passwordHash = passwordRef.current ? await sha256hex(passwordRef.current) : "";
-				ws.send(JSON.stringify({ event: "host:join", data: { agentId, passwordHash } }));
+				ws.send(JSON.stringify({ event: SIGNALING.HOST_JOIN, data: { agentId, passwordHash } }));
 			};
 
 			ws.onmessage = async (event: MessageEvent<string>) => {
@@ -79,7 +79,7 @@ export function useWebRTCHost(
 
 				const msgEvent = msg.event as string | undefined;
 
-				if (msgEvent === "access:requested") {
+				if (msgEvent === SIGNALING.ACCESS_REQUESTED) {
 					const requestId = msg.requestId as string;
 					const deviceId = msg.deviceId as string;
 					const label = msg.label as string | undefined;
@@ -87,7 +87,7 @@ export function useWebRTCHost(
 					return;
 				}
 
-				if (msgEvent === "viewer:joined" && streamRef.current) {
+				if (msgEvent === SIGNALING.VIEWER_JOINED && streamRef.current) {
 					const stream = streamRef.current;
 					const viewerId = msg.viewerId as string;
 					const label = msg.label as string | undefined;
@@ -105,7 +105,7 @@ export function useWebRTCHost(
 						if (candidate && currentWs && currentWs.readyState === WebSocket.OPEN) {
 							currentWs.send(
 								JSON.stringify({
-									event: "webrtc:ice",
+									event: SIGNALING.WEBRTC_ICE,
 									data: {
 										agentId,
 										viewerId,
@@ -125,34 +125,34 @@ export function useWebRTCHost(
 					await pc.setLocalDescription(offer);
 					ws.send(
 						JSON.stringify({
-							event: "webrtc:offer",
+							event: SIGNALING.WEBRTC_OFFER,
 							data: { agentId, viewerId, sdp: { type: offer.type, sdp: offer.sdp } },
 						}),
 					);
 				}
 
-				if (msgEvent === "webrtc:answer") {
+				if (msgEvent === SIGNALING.WEBRTC_ANSWER) {
 					const viewerId = msg.viewerId as string;
 					const sdp = msg.sdp as RTCSessionDescriptionInit;
 					const pc = peersRef.current.get(viewerId);
 					if (pc) await pc.setRemoteDescription(sdp);
 				}
 
-				if (msgEvent === "webrtc:ice") {
+				if (msgEvent === SIGNALING.WEBRTC_ICE) {
 					const viewerId = msg.viewerId as string;
 					const candidate = msg.candidate as RTCIceCandidateInit;
 					const pc = peersRef.current.get(viewerId);
 					if (pc) await pc.addIceCandidate(candidate);
 				}
 
-				if (msgEvent === "viewer:left") {
+				if (msgEvent === SIGNALING.VIEWER_LEFT) {
 					const viewerId = msg.viewerId as string;
 					peersRef.current.get(viewerId)?.close();
 					peersRef.current.delete(viewerId);
 					setViewers((prev) => prev.filter((v) => v.viewer_id !== viewerId));
 				}
 
-				if (msgEvent === "viewer:config") {
+				if (msgEvent === SIGNALING.VIEWER_CONFIG) {
 					const preset = msg.preset as keyof typeof QUALITY_PRESETS;
 					if (!(preset in QUALITY_PRESETS)) return;
 					const bitrateMap: Record<keyof typeof QUALITY_PRESETS, number> = {
@@ -229,7 +229,9 @@ export function useWebRTCHost(
 
 	const grantAccess = useCallback(
 		(requestId: string) => {
-			wsRef.current?.send(JSON.stringify({ event: "access:grant", data: { requestId, agentId } }));
+			wsRef.current?.send(
+				JSON.stringify({ event: SIGNALING.ACCESS_GRANT, data: { requestId, agentId } }),
+			);
 		},
 		[agentId],
 	);
@@ -238,7 +240,7 @@ export function useWebRTCHost(
 		(requestId: string, blacklist?: boolean) => {
 			wsRef.current?.send(
 				JSON.stringify({
-					event: "access:deny",
+					event: SIGNALING.ACCESS_DENY,
 					data: { requestId, agentId, blacklist: !!blacklist },
 				}),
 			);
@@ -251,7 +253,7 @@ export function useWebRTCHost(
 			const ws = wsRef.current;
 			if (!ws || ws.readyState !== WebSocket.OPEN) return;
 			const passwordHash = pw ? await sha256hex(pw) : "";
-			ws.send(JSON.stringify({ event: "host:join", data: { agentId, passwordHash } }));
+			ws.send(JSON.stringify({ event: SIGNALING.HOST_JOIN, data: { agentId, passwordHash } }));
 		},
 		[agentId],
 	);

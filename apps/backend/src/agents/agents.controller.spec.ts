@@ -1,9 +1,10 @@
-import { HttpStatus, NotFoundException } from "@nestjs/common";
+import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { AgentsController } from "./agents.controller";
-import { AgentsService } from "./agents.service";
+import { WsGateway } from "../ws/ws.gateway";
 import { AgentClientService } from "./agent-client.service";
 import { AgentEntity } from "./agent.entity";
+import { AgentsController } from "./agents.controller";
+import { AgentsService } from "./agents.service";
 
 // ---------------------------------------------------------------------------
 // Mock factories
@@ -44,6 +45,7 @@ describe("AgentsController", () => {
 			providers: [
 				{ provide: AgentsService, useValue: agentsService },
 				{ provide: AgentClientService, useValue: agentClientService },
+				{ provide: WsGateway, useValue: { getViewers: jest.fn(), kickViewer: jest.fn() } },
 			],
 		}).compile();
 
@@ -122,6 +124,3 @@ describe("AgentsController", () => {
 		});
 	});
 });
-
-
-

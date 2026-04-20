@@ -1,6 +1,7 @@
 import { getSignalingUrl } from "@/core/webrtc";
 import { agentApi } from "@/services/agent-api";
 import { getDeviceId } from "@/utils/device-identity";
+import { SIGNALING } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ export function useWhitelistCheck(agentId: string): UseWhitelistCheck {
 				ws.onopen = () => {
 					ws.send(
 						JSON.stringify({
-							event: "access:request",
+							event: SIGNALING.ACCESS_REQUEST,
 							data: { requestId, agentId, deviceId, label },
 						}),
 					);
@@ -112,12 +113,12 @@ export function useWhitelistCheck(agentId: string): UseWhitelistCheck {
 
 					const msgEvent = msg.event as string | undefined;
 
-					if (msgEvent === "access:granted") {
+					if (msgEvent === SIGNALING.ACCESS_GRANTED) {
 						setStatus("allowed");
 						ws.close();
 					}
 
-					if (msgEvent === "access:denied") {
+					if (msgEvent === SIGNALING.ACCESS_DENIED) {
 						const blacklisted = msg.blacklisted as boolean | undefined;
 						const reason = msg.reason as string | undefined;
 						if (blacklisted) {

@@ -3,30 +3,14 @@ import type {
 	ClientToAgentMessage,
 	QualityConfig,
 	QualityPreset,
+	SessionEventMap,
+	SessionState,
 } from "@omni-view/shared";
+import { AGENT_MSG, TypedEventEmitter } from "@omni-view/shared";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Re-export for consumers that only import from this module ────────────────
 
-export type SessionState =
-	| "idle"
-	| "connecting"
-	| "authenticating"
-	| "streaming"
-	| "paused"
-	| "degraded"
-	| "closed";
-
-export interface SessionEvents {
-	stateChange: SessionState;
-	/** Raw binary frame from the agent — may be H264/fMP4 init, H264 chunk, or image bytes. */
-	binaryFrame: ArrayBuffer;
-	/** Parsed JSON text message from the agent. */
-	message: AgentToClientMessage;
-	error: Error;
-}
-
-type Listener<T> = (value: T) => void;
-type ListenerMap = { [K in keyof SessionEvents]?: Set<Listener<SessionEvents[K]>> };
+export type { SessionEventMap as SessionEvents, SessionState };
 
 // ─── AgentSession ─────────────────────────────────────────────────────────────
 
@@ -41,10 +25,9 @@ type ListenerMap = { [K in keyof SessionEvents]?: Set<Listener<SessionEvents[K]>
  * session.connect();
  * ```
  */
-export class AgentSession {
+export class AgentSession extends TypedEventEmitter<SessionEventMap> {
 	private ws: WebSocket | null = null;
 	private state: SessionState = "idle";
-	private listeners: ListenerMap = {};
 	private attempts = 0;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private stopped = false;
@@ -52,26 +35,8 @@ export class AgentSession {
 	constructor(
 		private readonly wsUrl: string,
 		private readonly password: string,
-	) {}
-
-	// ─── Event emitter ──────────────────────────────────────────────────────
-
-	on<K extends keyof SessionEvents>(event: K, cb: Listener<SessionEvents[K]>): () => void {
-		if (!this.listeners[event]) {
-			(this.listeners as Record<K, Set<Listener<SessionEvents[K]>>>)[event] = new Set();
-		}
-		(this.listeners[event] as Set<Listener<SessionEvents[K]>>).add(cb);
-		return () => this.off(event, cb);
-	}
-
-	off<K extends keyof SessionEvents>(event: K, cb: Listener<SessionEvents[K]>): void {
-		(this.listeners[event] as Set<Listener<SessionEvents[K]>> | undefined)?.delete(cb);
-	}
-
-	private emit<K extends keyof SessionEvents>(event: K, value: SessionEvents[K]): void {
-		(this.listeners[event] as Set<Listener<SessionEvents[K]>> | undefined)?.forEach((l) =>
-			l(value),
-		);
+	) {
+		super();
 	}
 
 	// ─── State ──────────────────────────────────────────────────────────────
@@ -149,9 +114,9 @@ export class AgentSession {
 		} catch {
 			return; // non-JSON text frame — ignore
 		}
-		if (msg.type === "auth_ok") {
+		if (msg.type === AGENT_MSG.AUTH_OK) {
 			this.setState("streaming");
-		} else if (msg.type === "auth_error") {
+		} else if (msg.type === AGENT_MSG.AUTH_ERROR) {
 			this.stopped = true;
 			this.setState("closed");
 			this.ws?.close();

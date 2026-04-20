@@ -8,21 +8,18 @@ import {
 	WebSocketGateway,
 	WebSocketServer,
 } from "@nestjs/websockets";
+import type { AgentNotification, ViewerInfo } from "@omni-view/shared";
+import { SIGNALING } from "@omni-view/shared";
 import { createHash } from "crypto";
 import { Server, WebSocket } from "ws";
 import { AgentsService } from "../agents/agents.service";
+import logger from "../common/custom-logger.service";
 
 interface ViewerMeta {
 	agentId: string;
 	viewerId: string;
 	label?: string;
 	connectedAt: string;
-}
-
-interface ViewerInfo {
-	viewer_id: string;
-	label?: string;
-	connected_at: string;
 }
 
 interface PendingRequest {
@@ -81,7 +78,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			if (pending) {
 				const hostWs = this.hostSockets.get(pending.agentId);
 				if (hostWs) {
-					this.sendTo(hostWs, { event: "access:cancelled", requestId: pendingRequestId });
+					this.sendTo(hostWs, { event: SIGNALING.ACCESS_CANCELLED, requestId: pendingRequestId });
 				}
 				this.pendingRequests.delete(pendingRequestId);
 			}
@@ -95,7 +92,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				this.hostPasswords.delete(agentId);
 				for (const [viewerWs, meta] of this.viewerSockets) {
 					if (meta.agentId === agentId) {
-						this.sendTo(viewerWs, { event: "host:disconnected", agentId });
+						this.sendTo(viewerWs, { event: SIGNALING.HOST_DISCONNECTED, agentId });
 					}
 				}
 				break;
@@ -109,7 +106,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			const hostWs = this.hostSockets.get(viewerMeta.agentId);
 			if (hostWs) {
 				this.sendTo(hostWs, {
-					event: "viewer:left",
+					event: SIGNALING.VIEWER_LEFT,
 					viewerId: viewerMeta.viewerId,
 					agentId: viewerMeta.agentId,
 				});
@@ -132,35 +129,34 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	// ─── WebRTC signaling ──────────────────────────────────────────────────────
 
 	/** Browser host registers as the capture source for an agent. */
-	@SubscribeMessage("host:join")
+	@SubscribeMessage(SIGNALING.HOST_JOIN)
 	handleHostJoin(
 		@ConnectedSocket() client: WebSocket,
 		@MessageBody() payload: { agentId: string; passwordHash: string },
 	): void {
-		console.log("[WS] host:join received, agentId:", payload.agentId);
+		logger.info(`[WS] host:join received, agentId: ${payload.agentId}`);
 		this.hostSockets.set(payload.agentId, client);
 		this.hostPasswords.set(payload.agentId, payload.passwordHash);
-		console.log("[WS] hostSockets keys:", [...this.hostSockets.keys()]);
+		logger.debug(`[WS] hostSockets keys: ${JSON.stringify([...this.hostSockets.keys()])}`);
 	}
 
 	/** Viewer requests to watch a browser-captured agent. */
-	@SubscribeMessage("viewer:request")
+	@SubscribeMessage(SIGNALING.VIEWER_REQUEST)
 	async handleViewerRequest(
 		@ConnectedSocket() client: WebSocket,
 		@MessageBody() payload: { agentId: string; viewerId: string; password: string; label?: string },
 	): Promise<void> {
-		console.log(
-			"[WS] viewer:request received, agentId:",
-			payload.agentId,
-			"viewerId:",
-			payload.viewerId,
+		logger.info(
+			`[WS] viewer:request received, agentId: ${payload.agentId}, viewerId: ${payload.viewerId}`,
 		);
-		console.log("[WS] hostSockets keys at request time:", [...this.hostSockets.keys()]);
+		logger.debug(
+			`[WS] hostSockets keys at request time: ${JSON.stringify([...this.hostSockets.keys()])}`,
+		);
 		const storedHash = this.hostPasswords.get(payload.agentId);
 		if (storedHash) {
 			const attemptHash = createHash("sha256").update(payload.password).digest("hex");
 			if (attemptHash !== storedHash) {
-				this.sendTo(client, { event: "viewer:rejected", reason: "invalid_password" });
+				this.sendTo(client, { event: SIGNALING.VIEWER_REJECTED, reason: "invalid_password" });
 				return;
 			}
 		}
@@ -170,13 +166,13 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			.isBlacklisted(payload.agentId, payload.viewerId)
 			.catch(() => false);
 		if (isBlocked) {
-			this.sendTo(client, { event: "viewer:rejected", reason: "blacklisted" });
+			this.sendTo(client, { event: SIGNALING.VIEWER_REJECTED, reason: "blacklisted" });
 			return;
 		}
 
 		const hostWs = this.hostSockets.get(payload.agentId);
 		if (!hostWs) {
-			this.sendTo(client, { event: "viewer:rejected", reason: "host_not_available" });
+			this.sendTo(client, { event: SIGNALING.VIEWER_REJECTED, reason: "host_not_available" });
 			return;
 		}
 
@@ -192,7 +188,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				connectedAt: new Date().toISOString(),
 			});
 			this.sendTo(hostWs, {
-				event: "viewer:joined",
+				event: SIGNALING.VIEWER_JOINED,
 				viewerId: payload.viewerId,
 				label: payload.label,
 				agentId: payload.agentId,
@@ -212,9 +208,9 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		});
 		this.pendingBySocket.set(client, requestId);
 
-		this.sendTo(client, { event: "viewer:pending", requestId });
+		this.sendTo(client, { event: SIGNALING.VIEWER_PENDING, requestId });
 		this.sendTo(hostWs, {
-			event: "access:requested",
+			event: SIGNALING.ACCESS_REQUESTED,
 			requestId,
 			deviceId: payload.viewerId,
 			label: payload.label,
@@ -222,7 +218,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	/** Viewer sends an access request to the host (whitelist-gated flow). */
-	@SubscribeMessage("access:request")
+	@SubscribeMessage(SIGNALING.ACCESS_REQUEST)
 	async handleAccessRequest(
 		@ConnectedSocket() client: WebSocket,
 		@MessageBody()
@@ -234,7 +230,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			.catch(() => false);
 		if (isBlocked) {
 			this.sendTo(client, {
-				event: "access:denied",
+				event: SIGNALING.ACCESS_DENIED,
 				requestId: payload.requestId,
 				blacklisted: true,
 			});
@@ -246,14 +242,14 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			.isWhitelisted(payload.agentId, payload.deviceId)
 			.catch(() => false);
 		if (isAllowed) {
-			this.sendTo(client, { event: "access:granted", requestId: payload.requestId });
+			this.sendTo(client, { event: SIGNALING.ACCESS_GRANTED, requestId: payload.requestId });
 			return;
 		}
 
 		const hostWs = this.hostSockets.get(payload.agentId);
 		if (!hostWs) {
 			this.sendTo(client, {
-				event: "access:denied",
+				event: SIGNALING.ACCESS_DENIED,
 				requestId: payload.requestId,
 				reason: "host_not_available",
 			});
@@ -270,7 +266,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		this.pendingBySocket.set(client, payload.requestId);
 
 		this.sendTo(hostWs, {
-			event: "access:requested",
+			event: SIGNALING.ACCESS_REQUESTED,
 			requestId: payload.requestId,
 			deviceId: payload.deviceId,
 			label: payload.label,
@@ -278,7 +274,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	/** Host grants a pending access request. */
-	@SubscribeMessage("access:grant")
+	@SubscribeMessage(SIGNALING.ACCESS_GRANT)
 	async handleAccessGrant(
 		@ConnectedSocket() _client: WebSocket,
 		@MessageBody() payload: { requestId: string; agentId: string },
@@ -298,7 +294,10 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			// Complete the viewer:request join now that the host approved.
 			const hostWs = this.hostSockets.get(pending.agentId);
 			if (!hostWs) {
-				this.sendTo(pending.viewerWs, { event: "viewer:rejected", reason: "host_not_available" });
+				this.sendTo(pending.viewerWs, {
+					event: SIGNALING.VIEWER_REJECTED,
+					reason: "host_not_available",
+				});
 				return;
 			}
 			this.viewerSockets.set(pending.viewerWs, {
@@ -307,20 +306,26 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				label: pending.label,
 				connectedAt: new Date().toISOString(),
 			});
-			this.sendTo(pending.viewerWs, { event: "viewer:approved", requestId: payload.requestId });
+			this.sendTo(pending.viewerWs, {
+				event: SIGNALING.VIEWER_APPROVED,
+				requestId: payload.requestId,
+			});
 			this.sendTo(hostWs, {
-				event: "viewer:joined",
+				event: SIGNALING.VIEWER_JOINED,
 				viewerId: pending.viewerId,
 				label: pending.label,
 				agentId: pending.agentId,
 			});
 		} else {
-			this.sendTo(pending.viewerWs, { event: "access:granted", requestId: payload.requestId });
+			this.sendTo(pending.viewerWs, {
+				event: SIGNALING.ACCESS_GRANTED,
+				requestId: payload.requestId,
+			});
 		}
 	}
 
 	/** Host denies a pending access request. */
-	@SubscribeMessage("access:deny")
+	@SubscribeMessage(SIGNALING.ACCESS_DENY)
 	async handleAccessDeny(
 		@ConnectedSocket() _client: WebSocket,
 		@MessageBody() payload: { requestId: string; agentId: string; blacklist?: boolean },
@@ -339,12 +344,12 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 		if (pending.type === "viewer") {
 			this.sendTo(pending.viewerWs, {
-				event: "viewer:rejected",
+				event: SIGNALING.VIEWER_REJECTED,
 				reason: payload.blacklist ? "blacklisted" : "denied",
 			});
 		} else {
 			this.sendTo(pending.viewerWs, {
-				event: "access:denied",
+				event: SIGNALING.ACCESS_DENIED,
 				requestId: payload.requestId,
 				blacklisted: !!payload.blacklist,
 			});
@@ -352,7 +357,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	/** Host sends SDP offer to a specific viewer. */
-	@SubscribeMessage("webrtc:offer")
+	@SubscribeMessage(SIGNALING.WEBRTC_OFFER)
 	handleOffer(
 		@ConnectedSocket() _client: WebSocket,
 		@MessageBody() payload: { agentId: string; viewerId: string; sdp: unknown },
@@ -360,7 +365,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		for (const [viewerWs, meta] of this.viewerSockets) {
 			if (meta.agentId === payload.agentId && meta.viewerId === payload.viewerId) {
 				this.sendTo(viewerWs, {
-					event: "webrtc:offer",
+					event: SIGNALING.WEBRTC_OFFER,
 					agentId: payload.agentId,
 					sdp: payload.sdp,
 				});
@@ -370,7 +375,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	/** Viewer sends SDP answer back to host. */
-	@SubscribeMessage("webrtc:answer")
+	@SubscribeMessage(SIGNALING.WEBRTC_ANSWER)
 	handleAnswer(
 		@ConnectedSocket() _client: WebSocket,
 		@MessageBody() payload: { agentId: string; viewerId: string; sdp: unknown },
@@ -378,7 +383,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		const hostWs = this.hostSockets.get(payload.agentId);
 		if (hostWs) {
 			this.sendTo(hostWs, {
-				event: "webrtc:answer",
+				event: SIGNALING.WEBRTC_ANSWER,
 				viewerId: payload.viewerId,
 				agentId: payload.agentId,
 				sdp: payload.sdp,
@@ -387,7 +392,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	/** Either side relays an ICE candidate to the other peer. */
-	@SubscribeMessage("webrtc:ice")
+	@SubscribeMessage(SIGNALING.WEBRTC_ICE)
 	handleIce(
 		@ConnectedSocket() _client: WebSocket,
 		@MessageBody()
@@ -397,7 +402,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			for (const [viewerWs, meta] of this.viewerSockets) {
 				if (meta.agentId === payload.agentId && meta.viewerId === payload.viewerId) {
 					this.sendTo(viewerWs, {
-						event: "webrtc:ice",
+						event: SIGNALING.WEBRTC_ICE,
 						agentId: payload.agentId,
 						candidate: payload.candidate,
 					});
@@ -408,7 +413,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			const hostWs = this.hostSockets.get(payload.agentId);
 			if (hostWs) {
 				this.sendTo(hostWs, {
-					event: "webrtc:ice",
+					event: SIGNALING.WEBRTC_ICE,
 					viewerId: payload.viewerId,
 					agentId: payload.agentId,
 					candidate: payload.candidate,
@@ -418,7 +423,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	/** Viewer requests a quality change; the gateway validates the sender and forwards to the host. */
-	@SubscribeMessage("viewer:config")
+	@SubscribeMessage(SIGNALING.VIEWER_CONFIG)
 	handleViewerConfig(
 		@ConnectedSocket() client: WebSocket,
 		@MessageBody() payload: { agentId: string; viewerId: string; preset: string },
@@ -430,7 +435,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		const hostWs = this.hostSockets.get(payload.agentId);
 		if (hostWs) {
 			this.sendTo(hostWs, {
-				event: "viewer:config",
+				event: SIGNALING.VIEWER_CONFIG,
 				viewerId: payload.viewerId,
 				preset: payload.preset,
 			});
@@ -443,12 +448,12 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	kickViewer(agentId: string, viewerId: string): void {
 		for (const [viewerWs, meta] of this.viewerSockets) {
 			if (meta.agentId === agentId && meta.viewerId === viewerId) {
-				this.sendTo(viewerWs, { event: "viewer:kicked" });
+				this.sendTo(viewerWs, { event: SIGNALING.VIEWER_KICKED });
 				viewerWs.close();
 				this.viewerSockets.delete(viewerWs);
 				const hostWs = this.hostSockets.get(agentId);
 				if (hostWs) {
-					this.sendTo(hostWs, { event: "viewer:left", viewerId, agentId });
+					this.sendTo(hostWs, { event: SIGNALING.VIEWER_LEFT, viewerId, agentId });
 				}
 				return;
 			}
@@ -471,7 +476,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	/** Notify all Rust-agent subscribers of a state change. */
-	notifyAgentSubscribers(agentId: string, event: Record<string, unknown>): void {
+	notifyAgentSubscribers(agentId: string, event: AgentNotification): void {
 		const message = JSON.stringify(event);
 		for (const [ws, id] of this.subscriptions) {
 			if (id === agentId && ws.readyState === WebSocket.OPEN) {

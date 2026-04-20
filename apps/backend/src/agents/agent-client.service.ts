@@ -1,4 +1,5 @@
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { AGENT_MSG } from "@omni-view/shared";
 import * as fs from "fs/promises";
 import * as path from "path";
 import WebSocket from "ws";
@@ -172,7 +173,7 @@ export class AgentClientService implements OnModuleDestroy {
 
 	private handleControl(session: AgentSession, msg: Record<string, unknown>): void {
 		switch (msg["type"]) {
-			case "auth_ok":
+			case AGENT_MSG.AUTH_OK:
 				session.connected = true;
 				logger.info(`Authenticated with agent ${session.agentId}`, CONTEXT);
 				this.wsGateway.notifyAgentSubscribers(session.agentId, {
@@ -180,7 +181,7 @@ export class AgentClientService implements OnModuleDestroy {
 					agentId: session.agentId,
 				});
 				break;
-			case "auth_error":
+			case AGENT_MSG.AUTH_ERROR:
 				logger.error(
 					`Auth rejected by agent ${session.agentId}: ${msg["reason"]}`,
 					undefined,
@@ -189,7 +190,7 @@ export class AgentClientService implements OnModuleDestroy {
 				session.ws.close(1008, "auth_error");
 				this.sessions.delete(session.agentId);
 				break;
-			case "reinit":
+			case AGENT_MSG.REINIT:
 				logger.info(`Encoder reinit on agent ${session.agentId}`, CONTEXT);
 				this.wsGateway.notifyAgentSubscribers(session.agentId, {
 					type: "agent_reinit",

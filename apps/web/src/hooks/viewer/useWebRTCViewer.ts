@@ -5,6 +5,7 @@
 import { createReceiverPeer, getSignalingUrl } from "@/core/webrtc";
 import { getDeviceId } from "@/utils/device-identity";
 import type { AgentSummary, QualityPreset } from "@omni-view/shared";
+import { SIGNALING } from "@omni-view/shared";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export type ConnectionState =
@@ -118,7 +119,7 @@ export function useWebRTCViewer(
 				if (candidate && ws.readyState === WebSocket.OPEN) {
 					ws.send(
 						JSON.stringify({
-							event: "webrtc:ice",
+							event: SIGNALING.WEBRTC_ICE,
 							data: {
 								agentId: agent.agent_id,
 								viewerId,
@@ -137,7 +138,7 @@ export function useWebRTCViewer(
 			ws.onopen = () => {
 				ws.send(
 					JSON.stringify({
-						event: "viewer:request",
+						event: SIGNALING.VIEWER_REQUEST,
 						data: {
 							agentId: agent.agent_id,
 							viewerId,
@@ -158,17 +159,17 @@ export function useWebRTCViewer(
 
 				const msgEvent = msg.event as string | undefined;
 
-				if (msgEvent === "viewer:pending") {
+				if (msgEvent === SIGNALING.VIEWER_PENDING) {
 					setConnectionState("pending");
 					return;
 				}
 
-				if (msgEvent === "viewer:approved") {
+				if (msgEvent === SIGNALING.VIEWER_APPROVED) {
 					setConnectionState("connecting");
 					return;
 				}
 
-				if (msgEvent === "viewer:rejected") {
+				if (msgEvent === SIGNALING.VIEWER_REJECTED) {
 					const reason = msg.reason as string;
 					setError(
 						reason === "invalid_password"
@@ -185,14 +186,14 @@ export function useWebRTCViewer(
 					return;
 				}
 
-				if (msgEvent === "webrtc:offer") {
+				if (msgEvent === SIGNALING.WEBRTC_OFFER) {
 					const sdp = msg.sdp as RTCSessionDescriptionInit;
 					await pc.setRemoteDescription(sdp);
 					const answer = await pc.createAnswer();
 					await pc.setLocalDescription(answer);
 					ws.send(
 						JSON.stringify({
-							event: "webrtc:answer",
+							event: SIGNALING.WEBRTC_ANSWER,
 							data: {
 								agentId: agent.agent_id,
 								viewerId,
@@ -202,17 +203,17 @@ export function useWebRTCViewer(
 					);
 				}
 
-				if (msgEvent === "webrtc:ice") {
+				if (msgEvent === SIGNALING.WEBRTC_ICE) {
 					const candidate = msg.candidate as RTCIceCandidateInit;
 					await pc.addIceCandidate(candidate);
 				}
 
-				if (msgEvent === "host:disconnected") {
+				if (msgEvent === SIGNALING.HOST_DISCONNECTED) {
 					setConnectionState("disconnected");
 					setError("The host stopped sharing.");
 				}
 
-				if (msgEvent === "viewer:kicked") {
+				if (msgEvent === SIGNALING.VIEWER_KICKED) {
 					setConnectionState("disconnected");
 					setError("You were removed by the host.");
 					ws.close();
@@ -300,7 +301,7 @@ export function useWebRTCViewer(
 			if (ws && ws.readyState === WebSocket.OPEN) {
 				ws.send(
 					JSON.stringify({
-						event: "viewer:config",
+						event: SIGNALING.VIEWER_CONFIG,
 						data: { agentId: agent.agent_id, viewerId, preset },
 					}),
 				);
