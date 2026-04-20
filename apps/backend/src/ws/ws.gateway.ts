@@ -1,3 +1,4 @@
+const PENDING_REQUEST_TIMEOUT_MS = 20000;
 import { AgentsService } from "@/agents/agents.service";
 import logger from "@/common/custom-logger.service";
 import { Inject, forwardRef } from "@nestjs/common";
@@ -57,6 +58,72 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	private readonly pendingRequests = new Map<string, PendingRequest>();
 	/** Access requests: viewer WebSocket → requestId (for cleanup on disconnect). */
 	private readonly pendingBySocket = new Map<WebSocket, string>();
+	/** Timeout handles for pending approvals by requestId. */
+	private readonly pendingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+	private clearPendingRequest(requestId: string): PendingRequest | undefined {
+		const pending = this.pendingRequests.get(requestId);
+		if (!pending) return undefined;
+
+		this.pendingRequests.delete(requestId);
+		this.pendingBySocket.delete(pending.viewerWs);
+		const timeout = this.pendingTimeouts.get(requestId);
+		if (timeout) {
+			clearTimeout(timeout);
+			this.pendingTimeouts.delete(requestId);
+		}
+
+		return pending;
+	}
+
+	private schedulePendingTimeout(requestId: string): void {
+		const current = this.pendingTimeouts.get(requestId);
+		if (current) clearTimeout(current);
+
+		const timeout = setTimeout(() => {
+			const pending = this.clearPendingRequest(requestId);
+			if (!pending) return;
+
+			if (pending.type === "viewer") {
+				this.sendTo(pending.viewerWs, {
+					event: SIGNALING.VIEWER_REJECTED,
+					reason: "approval_timeout",
+				});
+			} else {
+				this.sendTo(pending.viewerWs, {
+					event: SIGNALING.ACCESS_DENIED,
+					requestId,
+					reason: "approval_timeout",
+				});
+			}
+		}, PENDING_REQUEST_TIMEOUT_MS);
+
+		this.pendingTimeouts.set(requestId, timeout);
+	}
+
+	private registerViewerSocket(client: WebSocket, meta: ViewerMeta): void {
+		for (const [existingWs, existingMeta] of this.viewerSockets) {
+			if (
+				existingWs !== client &&
+				existingMeta.agentId === meta.agentId &&
+				existingMeta.viewerId === meta.viewerId
+			) {
+				this.viewerSockets.delete(existingWs);
+				const pendingId = this.pendingBySocket.get(existingWs);
+				if (pendingId) {
+					this.clearPendingRequest(pendingId);
+				}
+				if (
+					existingWs.readyState === WebSocket.OPEN ||
+					existingWs.readyState === WebSocket.CONNECTING
+				) {
+					existingWs.close();
+				}
+			}
+		}
+
+		this.viewerSockets.set(client, meta);
+	}
 
 	private sendTo(ws: WebSocket, payload: Record<string, unknown>): void {
 		if (ws.readyState === WebSocket.OPEN) {
@@ -74,15 +141,13 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		// Clean up any pending access/viewer request for this viewer.
 		const pendingRequestId = this.pendingBySocket.get(client);
 		if (pendingRequestId) {
-			const pending = this.pendingRequests.get(pendingRequestId);
+			const pending = this.clearPendingRequest(pendingRequestId);
 			if (pending) {
 				const hostWs = this.hostSockets.get(pending.agentId);
 				if (hostWs) {
 					this.sendTo(hostWs, { event: SIGNALING.ACCESS_CANCELLED, requestId: pendingRequestId });
 				}
-				this.pendingRequests.delete(pendingRequestId);
 			}
-			this.pendingBySocket.delete(client);
 		}
 
 		// Clean up if disconnected client was a host.
@@ -161,6 +226,12 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			}
 		}
 
+		// Host is not connected yet; reject immediately.
+		if (!this.hostSockets.has(payload.agentId)) {
+			this.sendTo(client, { event: SIGNALING.VIEWER_REJECTED, reason: "host_not_available" });
+			return;
+		}
+
 		// Reject blacklisted viewers immediately.
 		const isBlocked = await this.agentsService
 			.isBlacklisted(payload.agentId, payload.viewerId)
@@ -181,7 +252,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			.isWhitelisted(payload.agentId, payload.viewerId)
 			.catch(() => false);
 		if (isAllowed) {
-			this.viewerSockets.set(client, {
+			this.registerViewerSocket(client, {
 				agentId: payload.agentId,
 				viewerId: payload.viewerId,
 				label: payload.label,
@@ -207,6 +278,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			viewerWs: client,
 		});
 		this.pendingBySocket.set(client, requestId);
+		this.schedulePendingTimeout(requestId);
 
 		this.sendTo(client, { event: SIGNALING.VIEWER_PENDING, requestId });
 		this.sendTo(hostWs, {
@@ -264,6 +336,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			viewerWs: client,
 		});
 		this.pendingBySocket.set(client, payload.requestId);
+		this.schedulePendingTimeout(payload.requestId);
 
 		this.sendTo(hostWs, {
 			event: SIGNALING.ACCESS_REQUESTED,
@@ -279,11 +352,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		@ConnectedSocket() _client: WebSocket,
 		@MessageBody() payload: { requestId: string; agentId: string },
 	): Promise<void> {
-		const pending = this.pendingRequests.get(payload.requestId);
+		const pending = this.clearPendingRequest(payload.requestId);
 		if (!pending) return;
-
-		this.pendingRequests.delete(payload.requestId);
-		this.pendingBySocket.delete(pending.viewerWs);
 
 		// Auto-whitelist the device.
 		await this.agentsService
@@ -300,7 +370,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				});
 				return;
 			}
-			this.viewerSockets.set(pending.viewerWs, {
+			this.registerViewerSocket(pending.viewerWs, {
 				agentId: pending.agentId,
 				viewerId: pending.viewerId!,
 				label: pending.label,
@@ -330,11 +400,8 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		@ConnectedSocket() _client: WebSocket,
 		@MessageBody() payload: { requestId: string; agentId: string; blacklist?: boolean },
 	): Promise<void> {
-		const pending = this.pendingRequests.get(payload.requestId);
+		const pending = this.clearPendingRequest(payload.requestId);
 		if (!pending) return;
-
-		this.pendingRequests.delete(payload.requestId);
-		this.pendingBySocket.delete(pending.viewerWs);
 
 		if (payload.blacklist) {
 			await this.agentsService
@@ -462,17 +529,20 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	/** Return currently connected viewers for an agent. */
 	getViewers(agentId: string): ViewerInfo[] {
-		const result: ViewerInfo[] = [];
+		const byViewerId = new Map<string, ViewerInfo>();
 		for (const meta of this.viewerSockets.values()) {
 			if (meta.agentId === agentId) {
-				result.push({
-					viewer_id: meta.viewerId,
-					label: meta.label,
-					connected_at: meta.connectedAt,
-				});
+				const prev = byViewerId.get(meta.viewerId);
+				if (!prev || prev.connected_at < meta.connectedAt) {
+					byViewerId.set(meta.viewerId, {
+						viewer_id: meta.viewerId,
+						label: meta.label,
+						connected_at: meta.connectedAt,
+					});
+				}
 			}
 		}
-		return result;
+		return [...byViewerId.values()];
 	}
 
 	/** Notify all Rust-agent subscribers of a state change. */

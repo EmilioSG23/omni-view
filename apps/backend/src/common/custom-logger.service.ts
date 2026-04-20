@@ -32,11 +32,10 @@ function format(level: string, message: any, context?: string) {
 }
 
 export class CustomLogger implements LoggerService {
-	private readonly isDev: boolean;
-
-	constructor() {
-		const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "prod";
-		this.isDev = appEnv === "dev" || appEnv === "development";
+	private isDevelopment(): boolean {
+		const appEnv =
+			process.env.APP_ENV ?? process.env.NODE_ENV ?? process.env.ENV ?? process.env.MODE ?? "prod";
+		return appEnv === "dev" || appEnv === "development";
 	}
 
 	log(message: any, context?: string) {
@@ -57,7 +56,7 @@ export class CustomLogger implements LoggerService {
 	}
 
 	debug(message: any, context?: string) {
-		if (this.isDev) {
+		if (this.isDevelopment()) {
 			console.debug(format("DEBUG", message, context));
 		}
 	}

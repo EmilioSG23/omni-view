@@ -11,15 +11,26 @@ import { WsModule } from "@/ws/ws.module";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import path from "node:path";
 
 @Module({
 	imports: [
-		ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
+		ConfigModule.forRoot({
+			isGlobal: true,
+			load: [configuration],
+			envFilePath: [
+				path.resolve(process.cwd(), ".env.local"),
+				path.resolve(process.cwd(), ".env"),
+				path.resolve(__dirname, "../.env.local"),
+				path.resolve(__dirname, "../.env"),
+				path.resolve(__dirname, "../../.env.local"),
+				path.resolve(__dirname, "../../.env"),
+			],
+		}),
 		TypeOrmModule.forRoot({
 			type: "better-sqlite3",
 			database: process.env.DB_PATH ?? "omniview.db",
 			entities: [AgentEntity, WhitelistEntity, BlacklistEntity, FrameEntity],
-			// synchronize is safe for development/MVP. Disable in production.
 			synchronize: true,
 		}),
 		AgentsModule,

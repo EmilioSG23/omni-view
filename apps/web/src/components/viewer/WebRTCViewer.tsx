@@ -61,7 +61,6 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 					ref={videoRef}
 					autoPlay
 					playsInline
-					muted
 					className={`w-full h-full object-contain transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`}
 				/>
 
@@ -158,15 +157,31 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 								>
 									{paused ? <PlayIcon /> : <PauseIcon />}
 								</button>
-								<button
-									type="button"
-									onClick={toggleMute}
-									title={muted ? "Unmute" : "Mute"}
-									className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-								>
-									{muted ? <MuteIcon /> : <VolumeIcon />}
-								</button>
-								{/* Volume slider (0-100) */}
+								{/* Volume control: a button + slider that appears on hover (desktop) or tap (mobile) */}
+								<div className="relative flex items-center">
+									<div className="absolute bottom-[50%] left-1/2 mb-3 flex h-28 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-black/55 backdrop-blur-xs sm:hidden">
+										<input
+											type="range"
+											min={0}
+											max={100}
+											value={Math.round(volume * 100)}
+											onChange={(e) => setVolume(Number(e.target.value) / 100)}
+											onTouchStart={(e) => e.stopPropagation()}
+											onTouchMove={(e) => e.stopPropagation()}
+											onTouchEnd={(e) => e.stopPropagation()}
+											aria-label="Volume"
+											className="w-20 h-1.5 -rotate-90 accent-accent"
+										/>
+									</div>
+									<button
+										type="button"
+										onClick={toggleMute}
+										title={muted ? "Unmute" : "Mute"}
+										className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+									>
+										{muted ? <MuteIcon /> : <VolumeIcon />}
+									</button>
+								</div>
 								<input
 									type="range"
 									min={0}
@@ -174,7 +189,7 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 									value={Math.round(volume * 100)}
 									onChange={(e) => setVolume(Number(e.target.value) / 100)}
 									aria-label="Volume"
-									className="w-28 h-1.5 accent-accent"
+									className="hidden sm:block w-28 h-1.5 accent-accent"
 								/>
 							</div>
 							<div className="flex items-center gap-2">
