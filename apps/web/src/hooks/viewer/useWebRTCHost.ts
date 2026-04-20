@@ -4,7 +4,8 @@
 
 import { createSenderPeer, getSignalingUrl, sha256hex } from "@/core/webrtc";
 import { agentApi } from "@/services/agent-api";
-import type { ViewerInfo } from "@omni-view/shared";
+import type { CaptureSettings, ViewerInfo } from "@omni-view/shared";
+import { QUALITY_PRESETS } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CaptureState = "idle" | "requesting" | "active" | "error";
@@ -16,7 +17,7 @@ export interface UseWebRTCHostOptions {
 export interface UseWebRTCHostResult {
 	captureState: CaptureState;
 	viewers: ViewerInfo[];
-	startCapture: () => Promise<void>;
+	startCapture: (settings?: CaptureSettings) => Promise<void>;
 	stopCapture: () => void;
 	kickViewer: (viewerId: string) => Promise<void>;
 	grantAccess: (requestId: string) => void;
@@ -150,6 +151,31 @@ export function useWebRTCHost(
 					peersRef.current.delete(viewerId);
 					setViewers((prev) => prev.filter((v) => v.viewer_id !== viewerId));
 				}
+
+				if (msgEvent === "viewer:config") {
+					const preset = msg.preset as keyof typeof QUALITY_PRESETS;
+					if (!(preset in QUALITY_PRESETS)) return;
+					const bitrateMap: Record<keyof typeof QUALITY_PRESETS, number> = {
+						performance: 500_000,
+						balanced: 1_500_000,
+						quality: 4_000_000,
+					};
+					const maxBitrate = bitrateMap[preset];
+					for (const pc of peersRef.current.values()) {
+						for (const sender of pc.getSenders()) {
+							const params = sender.getParameters();
+							if (!params.encodings || params.encodings.length === 0) {
+								params.encodings = [{}];
+							}
+							for (const enc of params.encodings) {
+								enc.maxBitrate = maxBitrate;
+							}
+							sender.setParameters(params).catch(() => {
+								// setParameters may not be supported in all browsers; silently ignore.
+							});
+						}
+					}
+				}
 			};
 
 			ws.onclose = () => {
@@ -171,21 +197,25 @@ export function useWebRTCHost(
 		};
 	}, [agentId]);
 
-	const startCapture = useCallback(async () => {
-		if (captureState === "active") return;
-		setCaptureState("requesting");
-		try {
-			const stream = await navigator.mediaDevices.getDisplayMedia({
-				video: { frameRate: { ideal: 30, max: 60 } },
-				audio: false,
-			});
-			streamRef.current = stream;
-			stream.getVideoTracks()[0]?.addEventListener("ended", () => stopCapture());
-			setCaptureState("active");
-		} catch {
-			setCaptureState("error");
-		}
-	}, [captureState, stopCapture]);
+	const startCapture = useCallback(
+		async (settings?: CaptureSettings) => {
+			if (captureState === "active") return;
+			setCaptureState("requesting");
+			const fps = settings?.fps ?? 30;
+			try {
+				const stream = await navigator.mediaDevices.getDisplayMedia({
+					video: { frameRate: { ideal: fps, max: fps * 2 } },
+					audio: settings?.audio ?? false,
+				});
+				streamRef.current = stream;
+				stream.getVideoTracks()[0]?.addEventListener("ended", () => stopCapture());
+				setCaptureState("active");
+			} catch {
+				setCaptureState("error");
+			}
+		},
+		[captureState, stopCapture],
+	);
 
 	const kickViewer = useCallback(
 		async (viewerId: string) => {

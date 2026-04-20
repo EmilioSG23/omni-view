@@ -417,6 +417,26 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		}
 	}
 
+	/** Viewer requests a quality change; the gateway validates the sender and forwards to the host. */
+	@SubscribeMessage("viewer:config")
+	handleViewerConfig(
+		@ConnectedSocket() client: WebSocket,
+		@MessageBody() payload: { agentId: string; viewerId: string; preset: string },
+	): void {
+		// Only forward if the sender is actually a registered viewer for this agent.
+		const meta = this.viewerSockets.get(client);
+		if (!meta || meta.agentId !== payload.agentId) return;
+
+		const hostWs = this.hostSockets.get(payload.agentId);
+		if (hostWs) {
+			this.sendTo(hostWs, {
+				event: "viewer:config",
+				viewerId: payload.viewerId,
+				preset: payload.preset,
+			});
+		}
+	}
+
 	// ─── Public helpers ────────────────────────────────────────────────────────
 
 	/** Kick a viewer by closing their connection. */

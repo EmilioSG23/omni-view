@@ -1,9 +1,11 @@
 import { BROWSER_AGENT_VERSION, PASSWORD_STORAGE_KEY } from "@/consts";
 import { sha256hex } from "@/core/webrtc";
+import { useCaptureSettings } from "@/hooks/useCaptureSettings";
 import { useNotifications } from "@/hooks/useNotifications";
 import { type CaptureState, useWebRTCHost } from "@/hooks/viewer/useWebRTCHost";
 import { agentApi } from "@/services/agent-api";
 import { getDeviceId } from "@/utils/device-identity";
+import type { CaptureSettings } from "@omni-view/shared";
 import {
 	createContext,
 	type ReactNode,
@@ -31,6 +33,10 @@ export interface DeviceContextType {
 	savePassword: (pw?: string) => Promise<void>;
 	/** Current capture state. */
 	captureState: CaptureState;
+	/** Current capture configuration (quality preset, audio, fps). Persisted to localStorage. */
+	captureSettings: CaptureSettings;
+	/** Persist updated capture settings to localStorage. */
+	saveCaptureSettings: (settings: CaptureSettings) => void;
 	/** Request display media and begin broadcasting to connected viewers. */
 	startCapture: () => Promise<void>;
 	/** Stop broadcasting and close all peer connections. */
@@ -103,16 +109,22 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 		[addNotification, removeNotification],
 	);
 
+	const { settings: captureSettings, saveSettings: saveCaptureSettings } = useCaptureSettings();
+
 	const {
 		captureState,
 		viewers,
-		startCapture,
+		startCapture: hostStartCapture,
 		stopCapture,
 		kickViewer,
 		grantAccess,
 		denyAccess,
 		updatePassword,
 	} = useWebRTCHost(agentId, password, { onAccessRequested: handleAccessRequested });
+
+	const startCapture = useCallback(async () => {
+		await hostStartCapture(captureSettings);
+	}, [hostStartCapture, captureSettings]);
 
 	// Keep refs current after every render.
 	grantAccessRef.current = grantAccess;
@@ -126,6 +138,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 				const passwordHash = password ? await sha256hex(password) : undefined;
 				await agentApi.registerSelf({
 					agent_id: agentId,
+					label: navigator.userAgent.slice(0, 40),
 					version: BROWSER_AGENT_VERSION,
 					capture_mode: "browser",
 					password_hash: passwordHash,
@@ -150,6 +163,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 			const passwordHash = toStore ? await sha256hex(toStore) : undefined;
 			await agentApi.registerSelf({
 				agent_id: agentId,
+				label: navigator.userAgent.slice(0, 40),
 				version: BROWSER_AGENT_VERSION,
 				capture_mode: "browser",
 				password_hash: passwordHash,
@@ -167,6 +181,8 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 				password,
 				setPassword,
 				savePassword,
+				captureSettings,
+				saveCaptureSettings,
 				captureState,
 				startCapture,
 				stopCapture,

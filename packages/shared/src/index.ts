@@ -19,9 +19,26 @@ export interface QualityConfig {
 }
 
 export const QUALITY_PRESETS: Record<Exclude<QualityPreset, "custom">, QualityConfig> = {
-	performance: { fps: 5, quality: 40 },
-	balanced: { fps: 10, quality: 60 },
-	quality: { fps: 15, quality: 80 },
+	performance: { fps: 15, quality: 40 },
+	balanced: { fps: 30, quality: 60 },
+	quality: { fps: 60, quality: 80 },
+};
+
+// ─── Capture Settings ─────────────────────────────────────────────────────────
+
+export interface CaptureSettings {
+	/** Quality preset that determines fps and encoder quality. */
+	preset: Exclude<QualityPreset, "custom">;
+	/** Whether to request system/tab audio alongside the video track. */
+	audio: boolean;
+	/** Target frames-per-second for the captured video track. Derived from preset. */
+	fps: number;
+}
+
+export const DEFAULT_CAPTURE_SETTINGS: CaptureSettings = {
+	preset: "balanced",
+	audio: false,
+	fps: 30,
 };
 
 // Maximum allowed length for an agent session password. Projects should

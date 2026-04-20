@@ -5,6 +5,8 @@ import { EyeOffIcon } from "@/icons/EyeOffIcon";
 import { RefreshIcon } from "@/icons/RefreshIcon";
 import { AGENT_PASSWORD_MAX_LENGTH, generateAgentPassword } from "@omni-view/shared";
 import { useState } from "react";
+import { Modal } from "../Modal";
+import { CaptureSettingsPanel } from "./CaptureSettingsPanel";
 
 function CaptureStateBadge({ state }: { state: CaptureState }) {
 	const config = {
@@ -30,6 +32,8 @@ export function DevicePanel() {
 		password,
 		setPassword,
 		savePassword,
+		captureSettings,
+		saveCaptureSettings,
 		captureState,
 		startCapture,
 		stopCapture,
@@ -39,6 +43,7 @@ export function DevicePanel() {
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const [showPassword, setShowPassword] = useState(false);
+	const [showSettings, setShowSettings] = useState(false);
 
 	async function handleRegenerate() {
 		setSaving(true);
@@ -178,7 +183,8 @@ export function DevicePanel() {
 					<button
 						className="p-2 rounded-lg text-xs font-semibold transition-colors
 					bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30"
-						onClick={() => alert("Settings dialog not implemented yet")}
+						onClick={() => setShowSettings(true)}
+						title="Capture settings"
 					>
 						⚙
 					</button>
@@ -189,6 +195,16 @@ export function DevicePanel() {
 					</p>
 				)}
 			</div>
+
+			{showSettings && (
+				<Modal onClose={() => setShowSettings(false)} width="22rem">
+					<CaptureSettingsPanel
+						settings={captureSettings}
+						onSave={saveCaptureSettings}
+						onClose={() => setShowSettings(false)}
+					/>
+				</Modal>
+			)}
 		</aside>
 	);
 }
