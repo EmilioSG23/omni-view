@@ -12,4 +12,6 @@ export const GIT_REPO_URL = "https://github.com/EmilioSG23/omni-view";
 
 /** Base URL of the backend API. */
 export const BACKEND_URL =
-	(window as { electronAPI?: { backendUrl?: string } }).electronAPI?.backendUrl ?? "/api";
+	(window as { electronAPI?: { backendUrl?: string } }).electronAPI?.backendUrl ??
+	import.meta.env.VITE_BACKEND_URL ??
+	"/api";
