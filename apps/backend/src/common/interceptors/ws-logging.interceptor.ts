@@ -21,7 +21,7 @@ export class WsLoggingInterceptor implements NestInterceptor {
 
 		return next.handle().pipe(
 			tap(() => {
-				this.logger.log(`${event} +${Date.now() - start}ms`, "WsGateway");
+				this.logger.debug(`${event} +${Date.now() - start}ms`, "WsGateway");
 			}),
 		);
 	}
