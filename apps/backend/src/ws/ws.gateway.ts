@@ -199,10 +199,13 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		@ConnectedSocket() client: WebSocket,
 		@MessageBody() payload: { agentId: string; passwordHash: string },
 	): void {
-		logger.info(`[WS] host:join received, agentId: ${payload.agentId}`);
+		logger.info(`[WS] host:join received, agentId: ${payload.agentId}`, "WsGateway");
 		this.hostSockets.set(payload.agentId, client);
 		this.hostPasswords.set(payload.agentId, payload.passwordHash);
-		logger.debug(`[WS] hostSockets keys: ${JSON.stringify([...this.hostSockets.keys()])}`);
+		logger.debug(
+			`[WS] hostSockets keys: ${JSON.stringify([...this.hostSockets.keys()])}`,
+			"WsGateway",
+		);
 	}
 
 	/** Viewer requests to watch a browser-captured agent. */
@@ -213,9 +216,11 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	): Promise<void> {
 		logger.info(
 			`[WS] viewer:request received, agentId: ${payload.agentId}, viewerId: ${payload.viewerId}`,
+			"WsGateway",
 		);
 		logger.debug(
 			`[WS] hostSockets keys at request time: ${JSON.stringify([...this.hostSockets.keys()])}`,
+			"WsGateway",
 		);
 		const storedHash = this.hostPasswords.get(payload.agentId);
 		if (storedHash) {

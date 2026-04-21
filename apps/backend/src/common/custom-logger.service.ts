@@ -1,3 +1,4 @@
+import { isEnv } from "@/common/utils/env";
 import { LoggerService } from "@nestjs/common";
 
 const colors = {
@@ -33,9 +34,7 @@ function format(level: string, message: any, context?: string) {
 
 export class CustomLogger implements LoggerService {
 	private isDevelopment(): boolean {
-		const appEnv =
-			process.env.APP_ENV ?? process.env.NODE_ENV ?? process.env.ENV ?? process.env.MODE ?? "prod";
-		return appEnv === "dev" || appEnv === "development";
+		return isEnv("development");
 	}
 
 	log(message: any, context?: string) {

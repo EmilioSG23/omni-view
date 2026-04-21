@@ -4,11 +4,12 @@ import { BlacklistEntity } from "@/agents/blacklist.entity";
 import { WhitelistEntity } from "@/agents/whitelist.entity";
 import { AppController } from "@/app.controller";
 import { AppService } from "@/app.service";
+import { OriginWhitelistMiddleware } from "@/common/middleware/origin-whitelist.middleware";
 import configuration from "@/config/configuration";
 import { FrameEntity } from "@/frames/frame.entity";
 import { FramesModule } from "@/frames/frames.module";
 import { WsModule } from "@/ws/ws.module";
-import { Module } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import path from "node:path";
@@ -38,6 +39,10 @@ import path from "node:path";
 		WsModule,
 	],
 	controllers: [AppController],
-	providers: [AppService],
+	providers: [AppService, OriginWhitelistMiddleware],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+	configure(consumer: MiddlewareConsumer) {
+		consumer.apply(OriginWhitelistMiddleware).forRoutes("*");
+	}
+}
