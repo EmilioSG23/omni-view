@@ -8,7 +8,13 @@ import { Module, forwardRef } from "@nestjs/common";
 
 @Module({
 	imports: [forwardRef(() => AgentsModule)],
-	providers: [SessionManager, SignalingService, SignalingGateway, WsRateLimitGuard, WsLoggingInterceptor],
+	providers: [
+		SessionManager,
+		SignalingService,
+		SignalingGateway,
+		WsRateLimitGuard,
+		WsLoggingInterceptor,
+	],
 	exports: [SignalingService],
 })
 export class SignalingModule {}
