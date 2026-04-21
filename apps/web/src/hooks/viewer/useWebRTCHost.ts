@@ -4,8 +4,8 @@
 
 import { createSenderPeer, getSignalingUrl, sha256hex } from "@/core/webrtc";
 import { agentApi } from "@/services/agent-api";
-import type { CaptureSettings, ViewerInfo } from "@omni-view/shared";
-import { QUALITY_PRESETS, SIGNALING } from "@omni-view/shared";
+import type { CaptureSettings, RemoteInputEvent, ViewerInfo } from "@omni-view/shared";
+import { INPUT_CHANNEL_LABEL, QUALITY_PRESETS, SIGNALING } from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CaptureState = "idle" | "requesting" | "active" | "error";
@@ -25,6 +25,73 @@ export interface UseWebRTCHostResult {
 	/** Re-sends host:join to the gateway with the given password's hash.
 	 * Must be called after saving a new password so the gateway hash stays in sync. */
 	updatePassword: (pw: string) => Promise<void>;
+}
+
+// ─── Dispatch a remote input event as a native DOM event ─────────────────────
+
+function dispatchRemoteInput(input: RemoteInputEvent): void {
+	switch (input.type) {
+		case "mousemove": {
+			const el = document.elementFromPoint(
+				input.x * window.innerWidth,
+				input.y * window.innerHeight,
+			);
+			(el ?? document.body).dispatchEvent(
+				new MouseEvent("mousemove", {
+					clientX: input.x * window.innerWidth,
+					clientY: input.y * window.innerHeight,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			break;
+		}
+		case "mousedown":
+		case "mouseup": {
+			const el = document.elementFromPoint(
+				input.x * window.innerWidth,
+				input.y * window.innerHeight,
+			);
+			(el ?? document.body).dispatchEvent(
+				new MouseEvent(input.type, {
+					button: input.button,
+					buttons: input.type === "mousedown" ? 1 << input.button : 0,
+					clientX: input.x * window.innerWidth,
+					clientY: input.y * window.innerHeight,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			break;
+		}
+		case "wheel": {
+			document.body.dispatchEvent(
+				new WheelEvent("wheel", {
+					deltaX: input.deltaX,
+					deltaY: input.deltaY,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			break;
+		}
+		case "keydown":
+		case "keyup": {
+			document.activeElement?.dispatchEvent(
+				new KeyboardEvent(input.type, {
+					code: input.code,
+					key: input.key,
+					ctrlKey: input.ctrlKey,
+					shiftKey: input.shiftKey,
+					altKey: input.altKey,
+					metaKey: input.metaKey,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			break;
+		}
+	}
 }
 
 export function useWebRTCHost(
@@ -99,6 +166,15 @@ export function useWebRTCHost(
 						...prev,
 						{ viewer_id: viewerId, label, connected_at: connectedAt },
 					]);
+
+					// ─── DataChannel for remote input events ────────────────────
+					const inputChannel = pc.createDataChannel(INPUT_CHANNEL_LABEL);
+					inputChannel.onmessage = (ev: MessageEvent<string>) => {
+						try {
+							const input = JSON.parse(ev.data) as RemoteInputEvent;
+							dispatchRemoteInput(input);
+						} catch { /* malformed message — ignore */ }
+					};
 
 					pc.onicecandidate = ({ candidate }) => {
 						const currentWs = wsRef.current;
