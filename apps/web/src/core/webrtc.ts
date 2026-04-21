@@ -1,4 +1,8 @@
 import { BACKEND_URL as BASE } from "@/consts";
+import { fetchJson } from "@/core/fetch";
+import { IceServer, STUN_ICE_SERVER } from "@omni-view/shared";
+
+type IceServersResponse = IceServer[] | { iceServers?: IceServer[] };
 
 /** Compute SHA-256 hex of a string using the Web Crypto API. */
 export async function sha256hex(text: string): Promise<string> {
@@ -100,15 +104,35 @@ export function getSignalingUrl(): string {
 	return `${base}/ws`;
 }
 
+async function fetchIceServers(): Promise<IceServer[]> {
+	try {
+		const response = await fetchJson<IceServersResponse>(`/infra/ice-servers`);
+		const servers = Array.isArray(response) ? response : (response.iceServers ?? []);
+		return servers.map((server) => ({
+			urls: Array.isArray(server.urls) ? server.urls : [server.urls],
+			username: server.username,
+			credential: server.credential,
+		}));
+	} catch (error) {
+		console.warn("Failed to fetch ICE servers, falling back to default STUN", error);
+		return [STUN_ICE_SERVER];
+	}
+}
+
+async function obtainPeerConnection() {
+	const iceServers = await fetchIceServers();
+	return new RTCPeerConnection({
+		iceServers: iceServers.length > 0 ? iceServers : [STUN_ICE_SERVER],
+	});
+}
+
 /**
  * Create a sender (host) RTCPeerConnection pre-configured with a display
  * MediaStream. Caller must negotiate with the remote peer via the signaling
  * gateway before calling `setRemoteDescription`.
  */
-export function createSenderPeer(stream: MediaStream): RTCPeerConnection {
-	const pc = new RTCPeerConnection({
-		iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-	});
+export async function createSenderPeer(stream: MediaStream): Promise<RTCPeerConnection> {
+	const pc = await obtainPeerConnection();
 	for (const track of stream.getTracks()) {
 		pc.addTrack(track, stream);
 	}
@@ -119,8 +143,6 @@ export function createSenderPeer(stream: MediaStream): RTCPeerConnection {
  * Create a receiver (viewer) RTCPeerConnection.
  * Caller should attach `ontrack` before calling `setRemoteDescription`.
  */
-export function createReceiverPeer(): RTCPeerConnection {
-	return new RTCPeerConnection({
-		iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-	});
+export async function createReceiverPeer(): Promise<RTCPeerConnection> {
+	return await obtainPeerConnection();
 }

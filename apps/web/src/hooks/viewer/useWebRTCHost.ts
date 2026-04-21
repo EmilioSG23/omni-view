@@ -93,7 +93,7 @@ export function useWebRTCHost(
 					const label = msg.label as string | undefined;
 					const connectedAt = new Date().toISOString();
 
-					const pc = createSenderPeer(stream);
+					const pc = await createSenderPeer(stream);
 					peersRef.current.set(viewerId, pc);
 					setViewers((prev) => [
 						...prev,

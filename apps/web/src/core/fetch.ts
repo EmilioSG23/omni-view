@@ -1,8 +1,13 @@
 import { BACKEND_URL as BASE } from "@/consts";
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+	const headers = new Headers(init?.headers);
+	if (init?.body != null && !headers.has("Content-Type")) {
+		headers.set("Content-Type", "application/json");
+	}
+
 	const res = await fetch(`${BASE}${path}`, {
-		headers: { "Content-Type": "application/json", ...init?.headers },
+		headers,
 		...init,
 	});
 	if (!res.ok) {

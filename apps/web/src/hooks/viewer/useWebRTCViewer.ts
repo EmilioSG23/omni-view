@@ -142,7 +142,7 @@ export function useWebRTCViewer(
 			const ws = new WebSocket(getSignalingUrl());
 			wsRef.current = ws;
 
-			const pc = createReceiverPeer();
+			const pc = await createReceiverPeer();
 			pcRef.current = pc;
 
 			const armConnectTimeout = (phase: "connecting" | "pending") => {
