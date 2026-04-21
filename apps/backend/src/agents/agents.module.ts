@@ -5,7 +5,7 @@ import { AgentsService } from "@/agents/agents.service";
 import { BlacklistEntity } from "@/agents/blacklist.entity";
 import { WhitelistEntity } from "@/agents/whitelist.entity";
 import { FramesModule } from "@/frames/frames.module";
-import { WsModule } from "@/ws/ws.module";
+import { SignalingModule } from "@/signaling/signaling.module";
 import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 
@@ -13,7 +13,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 	imports: [
 		TypeOrmModule.forFeature([AgentEntity, WhitelistEntity, BlacklistEntity]),
 		FramesModule,
-		forwardRef(() => WsModule),
+		forwardRef(() => SignalingModule),
 	],
 	controllers: [AgentsController],
 	providers: [AgentsService, AgentClientService],

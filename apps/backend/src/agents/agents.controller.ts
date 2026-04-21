@@ -11,7 +11,7 @@ import { toAgentSummary } from "@/agents/agents.mapper";
 import { AgentSummaryDto, RegisterAgentResponseDto } from "@/agents/agents.responses";
 import { AgentsService } from "@/agents/agents.service";
 import { hashPassword } from "@/common/utils/crypto";
-import { WsGateway } from "@/ws/ws.gateway";
+import { SignalingService } from "@/signaling/signaling.service";
 import {
 	Body,
 	Controller,
@@ -30,7 +30,7 @@ export class AgentsController {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentClientService: AgentClientService,
-		private readonly wsGateway: WsGateway,
+		private readonly signalingService: SignalingService,
 	) {}
 
 	/** Register or update an agent. Called by the agent on startup. */
@@ -143,14 +143,14 @@ export class AgentsController {
 	getViewers(
 		@Param("id") agentId: string,
 	): Array<{ viewer_id: string; label?: string; connected_at: string }> {
-		return this.wsGateway.getViewers(agentId);
+		return this.signalingService.getViewers(agentId);
 	}
 
 	/** Kick a viewer from a browser-captured agent session. */
 	@Delete(":id/viewers/:viewerId")
 	@HttpCode(HttpStatus.NO_CONTENT)
 	kickViewer(@Param("id") agentId: string, @Param("viewerId") viewerId: string): void {
-		this.wsGateway.kickViewer(agentId, viewerId);
+		this.signalingService.kickViewer(agentId, viewerId);
 	}
 
 	/** Add a device to an agent's blacklist. */

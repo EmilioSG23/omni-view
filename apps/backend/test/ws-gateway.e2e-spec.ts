@@ -16,7 +16,7 @@
  */
 
 import { AppModule } from "@/app.module";
-import { WsGateway } from "@/ws/ws.gateway";
+import { SignalingService } from "@/signaling/signaling.service";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { WsAdapter } from "@nestjs/platform-ws";
@@ -100,17 +100,17 @@ function expectNoMessage(ws: WebSocket, waitMs = 300): Promise<void> {
 // Test suite
 // ---------------------------------------------------------------------------
 
-describe("WsGateway — signaling multi-client (e2e)", () => {
+describe("SignalingService — signaling multi-client (e2e)", () => {
 	let app: INestApplication;
 	let wsUrl: string;
-	let gateway: WsGateway;
+	let gateway: SignalingService;
 
 	const testDbPath = `omniview-e2e-ws-${Date.now()}.db`;
 
 	beforeAll(async () => {
 		process.env.DB_PATH = testDbPath;
 		({ app, wsUrl } = await startApp());
-		gateway = app.get(WsGateway);
+		gateway = app.get(SignalingService);
 	});
 
 	afterAll(async () => {
