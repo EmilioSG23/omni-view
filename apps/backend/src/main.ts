@@ -2,12 +2,12 @@ import { AppModule } from "@/app.module";
 import logger from "@/common/custom-logger.service";
 import { HttpExceptionFilter } from "@/common/filters/http-exception.filter";
 import { apiRateLimiter } from "@/common/middleware/rate-limit.middleware";
+import { isEnv } from "@/common/utils/env";
 import { obtainAllowedOrigins } from "@/common/utils/origins";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { WsAdapter } from "@nestjs/platform-ws";
-import { isEnv } from "./common/utils/env";
 
 function allowOrigins(app: INestApplication, configService: ConfigService): void {
 	const allowedOrigins = obtainAllowedOrigins(configService);
@@ -27,6 +27,16 @@ function allowOrigins(app: INestApplication, configService: ConfigService): void
 	} else {
 		app.enableCors();
 	}
+}
+
+function parseTrustProxy(configService: ConfigService): boolean | number | string | undefined {
+	const raw = configService.get<string>("TRUST_PROXY");
+	if (typeof raw === "undefined") return undefined;
+	if (raw === "true") return 1;
+	if (raw === "false") return false;
+	const n = Number(raw);
+	if (!Number.isNaN(n)) return n;
+	return raw;
 }
 
 async function bootstrap(): Promise<void> {
@@ -49,15 +59,13 @@ async function bootstrap(): Promise<void> {
 	// express-rate-limit validates X-Forwarded-For; enable trust proxy to avoid ValidationError.
 	try {
 		const httpInstance = app.getHttpAdapter().getInstance() as any;
-		const trustProxyRaw = configService.get<string>("TRUST_PROXY");
-		if (typeof trustProxyRaw !== "undefined") {
-			httpInstance.set("trust proxy", trustProxyRaw === "true");
+		const parsedTrustProxy = parseTrustProxy(configService);
+		if (typeof parsedTrustProxy !== "undefined") {
+			httpInstance.set("trust proxy", parsedTrustProxy);
 		} else if (isEnv("production")) {
-			httpInstance.set("trust proxy", true);
+			httpInstance.set("trust proxy", 1);
 		}
-	} catch (err) {
-		// ignore if adapter doesn't expose set(), but most Express adapters will
-	}
+	} catch (err) {}
 
 	allowOrigins(app, configService);
 	app.use("/api", apiRateLimiter);
