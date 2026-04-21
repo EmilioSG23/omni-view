@@ -1,12 +1,9 @@
-import { AgentEntity } from "@/agents/agent.entity";
 import { AgentsModule } from "@/agents/agents.module";
-import { BlacklistEntity } from "@/agents/blacklist.entity";
-import { WhitelistEntity } from "@/agents/whitelist.entity";
 import { AppController } from "@/app.controller";
 import { AppService } from "@/app.service";
 import { OriginWhitelistMiddleware } from "@/common/middleware/origin-whitelist.middleware";
 import configuration from "@/config/configuration";
-import { FrameEntity } from "@/frames/frame.entity";
+import { databaseConfig } from "@/config/database.config";
 import { FramesModule } from "@/frames/frames.module";
 import { WsModule } from "@/ws/ws.module";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
@@ -28,12 +25,7 @@ import path from "node:path";
 				path.resolve(__dirname, "../../.env"),
 			],
 		}),
-		TypeOrmModule.forRoot({
-			type: "better-sqlite3",
-			database: process.env.DB_PATH ?? "omniview.db",
-			entities: [AgentEntity, WhitelistEntity, BlacklistEntity, FrameEntity],
-			synchronize: true,
-		}),
+		TypeOrmModule.forRootAsync(databaseConfig),
 		AgentsModule,
 		FramesModule,
 		WsModule,
