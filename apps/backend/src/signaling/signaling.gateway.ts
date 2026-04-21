@@ -6,6 +6,8 @@ import { ViewerConfigDto } from "@/signaling/dto/viewer-config.dto";
 import { ViewerRequestDto } from "@/signaling/dto/viewer-request.dto";
 import { WebRtcAnswerDto, WebRtcIceDto, WebRtcOfferDto } from "@/signaling/dto/webrtc.dto";
 import { SignalingService } from "@/signaling/signaling.service";
+import { WsRateLimitGuard } from "@/common/guards/ws-rate-limit.guard";
+import { WsLoggingInterceptor } from "@/common/interceptors/ws-logging.interceptor";
 import {
 	ConnectedSocket,
 	MessageBody,
@@ -15,10 +17,13 @@ import {
 	WebSocketGateway,
 	WebSocketServer,
 } from "@nestjs/websockets";
+import { UseGuards, UseInterceptors } from "@nestjs/common";
 import { SIGNALING } from "@omni-view/shared";
 import { Server, WebSocket } from "ws";
 
 @WebSocketGateway({ path: "/api/ws" })
+@UseGuards(WsRateLimitGuard)
+@UseInterceptors(WsLoggingInterceptor)
 export class SignalingGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	constructor(private readonly signalingService: SignalingService) {}
 
