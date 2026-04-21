@@ -54,16 +54,8 @@ export function useWebRTCViewer(
 ): UseWebRTCViewerResult {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const videoRef = useRef<HTMLVideoElement>(null);
-	const pcRef = useRef<RTCPeerConnection | null>(null);
-	const wsRef = useRef<WebSocket | null>(null);
-	const connectAttemptRef = useRef(0);
-	const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
-	const [error, setError] = useState<string | null>(null);
-	const [paused, setPaused] = useState(false);
 	const LS_VOLUME_KEY = "omni-view.viewer.volume";
-	const [volume, setVolumeState] = useState<number>(() => {
+	const getInitialVolume = () => {
 		if (typeof window === "undefined") return 1;
 		try {
 			const raw = localStorage.getItem(LS_VOLUME_KEY);
@@ -73,7 +65,18 @@ export function useWebRTCViewer(
 		} catch {
 			return 1;
 		}
-	});
+	};
+	const initialVolume = getInitialVolume();
+	const volumeRef = useRef<number>(initialVolume);
+	const pcRef = useRef<RTCPeerConnection | null>(null);
+	const wsRef = useRef<WebSocket | null>(null);
+	const connectAttemptRef = useRef(0);
+	const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
+	const [error, setError] = useState<string | null>(null);
+	const [paused, setPaused] = useState(false);
+	const [volume, setVolumeState] = useState<number>(initialVolume);
 	const lastNonZeroRef = useRef<number>(1);
 	const [viewerQuality, setViewerQualityState] = useState<Exclude<QualityPreset, "custom"> | null>(
 		null,
@@ -162,8 +165,8 @@ export function useWebRTCViewer(
 				if (connectAttemptRef.current !== attemptId) return;
 				if (videoRef.current && event.streams[0]) {
 					videoRef.current.srcObject = event.streams[0];
-					videoRef.current.muted = volume === 0;
-					videoRef.current.volume = volume;
+					videoRef.current.muted = volumeRef.current === 0;
+					videoRef.current.volume = volumeRef.current;
 				}
 			};
 
@@ -319,7 +322,7 @@ export function useWebRTCViewer(
 				);
 			};
 		},
-		[agent.agent_id, cleanupCurrentConnection, clearConnectTimeout, viewerId, volume],
+		[agent.agent_id, cleanupCurrentConnection, clearConnectTimeout, viewerId],
 	);
 
 	// Auto-connect when component mounts if a password is provided
@@ -357,6 +360,7 @@ export function useWebRTCViewer(
 	const setVolume = useCallback((v: number) => {
 		const next = Math.max(0, Math.min(1, v));
 		setVolumeState(next);
+		volumeRef.current = next;
 		try {
 			localStorage.setItem(LS_VOLUME_KEY, String(next));
 		} catch {}

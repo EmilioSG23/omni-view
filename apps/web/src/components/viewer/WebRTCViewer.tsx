@@ -148,7 +148,7 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 
 						{/* Bottom bar — pause+mute on the left, quality+fullscreen on the right */}
 						<div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-4 pb-3 pt-10 flex items-end justify-between pointer-events-auto">
-							<div className="flex items-center gap-2">
+							<div className="flex items-center">
 								<button
 									type="button"
 									onClick={togglePause}
@@ -157,31 +157,14 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 								>
 									{paused ? <PlayIcon /> : <PauseIcon />}
 								</button>
-								{/* Volume control: a button + slider that appears on hover (desktop) or tap (mobile) */}
-								<div className="relative flex items-center">
-									<div className="absolute bottom-[50%] left-1/2 mb-3 flex h-28 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-black/55 backdrop-blur-xs sm:hidden">
-										<input
-											type="range"
-											min={0}
-											max={100}
-											value={Math.round(volume * 100)}
-											onChange={(e) => setVolume(Number(e.target.value) / 100)}
-											onTouchStart={(e) => e.stopPropagation()}
-											onTouchMove={(e) => e.stopPropagation()}
-											onTouchEnd={(e) => e.stopPropagation()}
-											aria-label="Volume"
-											className="w-20 h-1.5 -rotate-90 accent-accent"
-										/>
-									</div>
-									<button
-										type="button"
-										onClick={toggleMute}
-										title={muted ? "Unmute" : "Mute"}
-										className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-									>
-										{muted ? <MuteIcon /> : <VolumeIcon />}
-									</button>
-								</div>
+								<button
+									type="button"
+									onClick={toggleMute}
+									title={muted ? "Unmute" : "Mute"}
+									className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+								>
+									{muted ? <MuteIcon /> : <VolumeIcon />}
+								</button>
 								<input
 									type="range"
 									min={0}
@@ -189,7 +172,7 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 									value={Math.round(volume * 100)}
 									onChange={(e) => setVolume(Number(e.target.value) / 100)}
 									aria-label="Volume"
-									className="hidden sm:block w-28 h-1.5 accent-accent"
+									className="max-w-16 md:max-w-28 h-1.5 accent-accent cursor-pointer"
 								/>
 							</div>
 							<div className="flex items-center gap-2">
