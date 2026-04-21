@@ -6,7 +6,7 @@
 		"build": "nest build",
 		"dev": "nest start --watch",
 		"start": "nest start",
-		"start:prod": "node dist/main",
+		"start:prod": "node dist/src/main",
 		"test": "jest --passWithNoTests",
 		"test:watch": "jest --watch",
 		"test:cov": "jest --coverage",

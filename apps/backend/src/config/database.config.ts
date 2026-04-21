@@ -8,7 +8,7 @@ export const databaseConfig: TypeOrmModuleAsyncOptions = {
 		if (isEnv("production")) {
 			return {
 				type: "postgres",
-				url: config.get<string>("DATABASE_URL"),
+				url: config.get<string>("DB_URL"),
 				autoLoadEntities: true,
 				synchronize: false,
 				ssl: {
