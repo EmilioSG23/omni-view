@@ -96,7 +96,7 @@ export function AccessControlPanel() {
 					className="group w-6 h-6 flex items-center justify-center rounded text-muted hover:text-secondary transition-colors cursor-pointer disabled:opacity-40"
 				>
 					<RefreshIcon
-						className={`w-3.5 h-3.5 group-hover:-rotate-90 transition ${loading ? "animate-spin" : ""}`}
+						className={`w-3.5 h-3.5 ${loading ? "animate-spin" : "group-hover:-rotate-90 transition"}`}
 					/>
 				</button>
 			</div>
