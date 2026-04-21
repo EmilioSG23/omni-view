@@ -44,6 +44,21 @@ async function bootstrap(): Promise<void> {
 	app.setGlobalPrefix("api");
 
 	const configService = app.get(ConfigService);
+
+	// Configure Express 'trust proxy' when running behind a reverse proxy (e.g. Render, Vercel)
+	// express-rate-limit validates X-Forwarded-For; enable trust proxy to avoid ValidationError.
+	try {
+		const httpInstance = app.getHttpAdapter().getInstance() as any;
+		const trustProxyRaw = configService.get<string>("TRUST_PROXY");
+		if (typeof trustProxyRaw !== "undefined") {
+			httpInstance.set("trust proxy", trustProxyRaw === "true");
+		} else if (isEnv("production")) {
+			httpInstance.set("trust proxy", true);
+		}
+	} catch (err) {
+		// ignore if adapter doesn't expose set(), but most Express adapters will
+	}
+
 	allowOrigins(app, configService);
 	app.use("/api", apiRateLimiter);
 

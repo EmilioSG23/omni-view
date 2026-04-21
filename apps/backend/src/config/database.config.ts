@@ -6,11 +6,13 @@ export const databaseConfig: TypeOrmModuleAsyncOptions = {
 	inject: [ConfigService],
 	useFactory: (config: ConfigService) => {
 		if (isEnv("production")) {
+			const syncRaw = config.get<string>("DB_SYNCHRONIZE");
+			const synchronize = syncRaw === "true";
 			return {
 				type: "postgres",
 				url: config.get<string>("DB_URL"),
 				autoLoadEntities: true,
-				synchronize: false,
+				synchronize,
 				ssl: {
 					rejectUnauthorized: false,
 				},
