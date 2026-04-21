@@ -6,7 +6,7 @@ import configuration from "@/config/configuration";
 import { databaseConfig } from "@/config/database.config";
 import { FramesModule } from "@/frames/frames.module";
 import { InfraModule } from "@/infra/infra.module";
-import { WsModule } from "@/ws/ws.module";
+import { SignalingModule } from "@/signaling/signaling.module";
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -29,7 +29,7 @@ import path from "node:path";
 		TypeOrmModule.forRootAsync(databaseConfig),
 		AgentsModule,
 		FramesModule,
-		WsModule,
+		SignalingModule,
 		InfraModule,
 	],
 	controllers: [AppController],

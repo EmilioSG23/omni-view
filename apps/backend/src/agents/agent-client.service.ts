@@ -1,6 +1,6 @@
 import logger from "@/common/custom-logger.service";
 import { FramesService } from "@/frames/frames.service";
-import { WsGateway } from "@/ws/ws.gateway";
+import { SignalingService } from "@/signaling/signaling.service";
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import { AGENT_MSG } from "@omni-view/shared";
 import * as fs from "fs/promises";
@@ -26,7 +26,7 @@ export class AgentClientService implements OnModuleDestroy {
 
 	constructor(
 		private readonly framesService: FramesService,
-		private readonly wsGateway: WsGateway,
+		private readonly signalingService: SignalingService,
 	) {
 		this.frameStorePath =
 			process.env.FRAME_STORE_PATH ?? path.join("E:", "databases", "sqlite", "frames");
@@ -126,7 +126,7 @@ export class AgentClientService implements OnModuleDestroy {
 		ws.on("close", (code, reason) => {
 			session.connected = false;
 			this.sessions.delete(agentId);
-			this.wsGateway.notifyAgentSubscribers(agentId, { type: "agent_offline", agentId });
+			this.signalingService.notifyAgentSubscribers(agentId, { type: "agent_offline", agentId });
 			// Code 1000 = intentional close via disconnect() — do not reconnect
 			// isDestroying = module teardown in progress — do not reconnect
 			if (code === 1000 || this.isDestroying) {
@@ -176,7 +176,7 @@ export class AgentClientService implements OnModuleDestroy {
 			case AGENT_MSG.AUTH_OK:
 				session.connected = true;
 				logger.info(`Authenticated with agent ${session.agentId}`, CONTEXT);
-				this.wsGateway.notifyAgentSubscribers(session.agentId, {
+				this.signalingService.notifyAgentSubscribers(session.agentId, {
 					type: "agent_online",
 					agentId: session.agentId,
 				});
@@ -192,7 +192,7 @@ export class AgentClientService implements OnModuleDestroy {
 				break;
 			case AGENT_MSG.REINIT:
 				logger.info(`Encoder reinit on agent ${session.agentId}`, CONTEXT);
-				this.wsGateway.notifyAgentSubscribers(session.agentId, {
+				this.signalingService.notifyAgentSubscribers(session.agentId, {
 					type: "agent_reinit",
 					agentId: session.agentId,
 				});

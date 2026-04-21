@@ -1,21 +1,21 @@
 import { AgentClientService } from "@/agents/agent-client.service";
 import { FramesService } from "@/frames/frames.service";
-import { WsGateway } from "@/ws/ws.gateway";
+import { SignalingService } from "@/signaling/signaling.service";
 import WebSocket from "ws";
 
 jest.mock("ws");
 
 const MockWebSocket = WebSocket as jest.MockedClass<typeof WebSocket>;
 
-/** Build a mock WsGateway with all methods as jest.fn() */
-function makeGatewayMock(): jest.Mocked<WsGateway> {
+/** Build a mock SignalingService with all methods as jest.fn() */
+function makeGatewayMock(): jest.Mocked<SignalingService> {
 	return {
 		notifyAgentSubscribers: jest.fn(),
 		handleSubscribe: jest.fn(),
 		handleUnsubscribe: jest.fn(),
-		handleConnection: jest.fn(),
+		handleConnect: jest.fn(),
 		handleDisconnect: jest.fn(),
-	} as unknown as jest.Mocked<WsGateway>;
+	} as unknown as jest.Mocked<SignalingService>;
 }
 
 /** Build a mock FramesService */
@@ -39,7 +39,7 @@ function makeFakeWsInstance() {
 
 describe("AgentClientService", () => {
 	let service: AgentClientService;
-	let gateway: jest.Mocked<WsGateway>;
+	let gateway: jest.Mocked<SignalingService>;
 	let framesService: jest.Mocked<FramesService>;
 
 	beforeEach(() => {

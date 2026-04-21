@@ -15,10 +15,16 @@
 		"build:desktop": "pnpm --filter @omni-view/desktop build",
 		"build:mobile": "pnpm --filter @omni-view/mobile build",
 		"build:backend": "pnpm --filter @omni-view/backend build",
-		"build:agent": "pnpm --filter @omni-view/agent build"
+		"build:agent": "pnpm --filter @omni-view/agent build",
+		"test:backend": "pnpm --filter @omni-view/backend test",
+		"test:web": "pnpm --filter @omni-view/web test",
+		"test:e2e:web": "playwright test -c playwright.config.ts"
 	},
 	"packageManager": "pnpm@10.33.0",
 	"dependencies": {
 		"ws": "^8.20.0"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.49.1"
 	}
 }

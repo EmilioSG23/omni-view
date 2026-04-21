@@ -113,6 +113,7 @@ export function useWebRTCViewer(
 		pc.ontrack = null;
 		pc.onconnectionstatechange = null;
 		pc.onicecandidate = null;
+		pc.ondatachannel = null;
 		pc.close();
 	}, []);
 
