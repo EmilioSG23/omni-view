@@ -47,11 +47,12 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 	return (
 		<div
 			ref={containerRef}
-			className="flex flex-col h-full w-full bg-base rounded-xl overflow-hidden border border-border"
+			className={`flex flex-col h-full w-full rounded-xl overflow-hidden
+				${!isFullscreen ? "bg-base border border-border" : ""}`}
 		>
 			{/* Video stage */}
 			<div
-				className="relative flex-1 bg-black flex items-center justify-center min-h-0"
+				className={`relative flex-1 ${isActive ? "bg-black" : "bg-base"} flex items-center justify-center min-h-0`}
 				onMouseEnter={isActive ? handleMouseEnter : undefined}
 				onMouseLeave={isActive ? handleMouseLeave : undefined}
 				onMouseMove={isActive ? handleMouseMove : undefined}

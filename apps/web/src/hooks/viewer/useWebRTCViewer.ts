@@ -139,11 +139,20 @@ export function useWebRTCViewer(
 			setConnectionState("connecting");
 			setError(null);
 
+			let pc: RTCPeerConnection;
+			try {
+				pc = await createReceiverPeer();
+			} catch {
+				if (connectAttemptRef.current !== attemptId) return;
+				setConnectionState("disconnected");
+				setError("Unable to initialize WebRTC. Try reconnecting.");
+				cleanupCurrentConnection(true);
+				return;
+			}
+			pcRef.current = pc;
+
 			const ws = new WebSocket(getSignalingUrl());
 			wsRef.current = ws;
-
-			const pc = await createReceiverPeer();
-			pcRef.current = pc;
 
 			const armConnectTimeout = (phase: "connecting" | "pending") => {
 				clearConnectTimeout();
@@ -280,25 +289,41 @@ export function useWebRTCViewer(
 				}
 
 				if (msgEvent === SIGNALING.WEBRTC_OFFER) {
-					const sdp = msg.sdp as RTCSessionDescriptionInit;
-					await pc.setRemoteDescription(sdp);
-					const answer = await pc.createAnswer();
-					await pc.setLocalDescription(answer);
-					ws.send(
-						JSON.stringify({
-							event: SIGNALING.WEBRTC_ANSWER,
-							data: {
-								agentId: agent.agent_id,
-								viewerId,
-								sdp: { type: answer.type, sdp: answer.sdp },
-							},
-						}),
-					);
+					try {
+						const sdp = msg.sdp as RTCSessionDescriptionInit;
+						await pc.setRemoteDescription(sdp);
+						const answer = await pc.createAnswer();
+						await pc.setLocalDescription(answer);
+						ws.send(
+							JSON.stringify({
+								event: SIGNALING.WEBRTC_ANSWER,
+								data: {
+									agentId: agent.agent_id,
+									viewerId,
+									sdp: { type: answer.type, sdp: answer.sdp },
+								},
+							}),
+						);
+					} catch {
+						if (connectAttemptRef.current !== attemptId) return;
+						clearConnectTimeout();
+						setConnectionState("disconnected");
+						setError("Failed to negotiate WebRTC session. Try reconnecting.");
+						cleanupCurrentConnection(true);
+					}
 				}
 
 				if (msgEvent === SIGNALING.WEBRTC_ICE) {
-					const candidate = msg.candidate as RTCIceCandidateInit;
-					await pc.addIceCandidate(candidate);
+					try {
+						const candidate = msg.candidate as RTCIceCandidateInit;
+						await pc.addIceCandidate(candidate);
+					} catch {
+						if (connectAttemptRef.current !== attemptId) return;
+						clearConnectTimeout();
+						setConnectionState("disconnected");
+						setError("Network negotiation failed. Try reconnecting.");
+						cleanupCurrentConnection(true);
+					}
 				}
 
 				if (msgEvent === SIGNALING.HOST_DISCONNECTED) {
