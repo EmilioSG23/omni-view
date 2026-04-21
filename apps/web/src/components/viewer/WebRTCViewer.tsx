@@ -6,7 +6,6 @@ import { PauseIcon } from "@/icons/PauseIcon";
 import { PlayIcon } from "@/icons/PlayIcon";
 import { VolumeIcon } from "@/icons/VolumeIcon";
 import type { AgentSummary, QualityPreset } from "@omni-view/shared";
-import { InputCapture } from "./InputCapture";
 import { QualityBar } from "./QualityBar";
 
 interface WebRTCViewerProps {
@@ -40,7 +39,6 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 		handleMouseLeave,
 		handleMouseMove,
 		handleTouchEnd,
-		sendInput,
 		isActive,
 		isConnecting,
 		isPending,
@@ -66,9 +64,6 @@ export function WebRTCViewer({ agent, password: initialPassword }: WebRTCViewerP
 					playsInline
 					className={`w-full h-full object-contain transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`}
 				/>
-
-				{/* Remote input capture overlay — active only when connected */}
-				{isActive && <InputCapture sendInput={sendInput} />}
 
 				{/* Overlay states */}
 				{!isActive && (

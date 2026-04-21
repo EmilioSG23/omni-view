@@ -4,8 +4,8 @@
 
 import { createReceiverPeer, getSignalingUrl } from "@/core/webrtc";
 import { getDeviceId } from "@/utils/device-identity";
-import type { AgentSummary, QualityPreset, RemoteInputEvent } from "@omni-view/shared";
-import { INPUT_CHANNEL_LABEL, SIGNALING } from "@omni-view/shared";
+import type { AgentSummary, QualityPreset } from "@omni-view/shared";
+import { SIGNALING } from "@omni-view/shared";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export type ConnectionState =
@@ -40,8 +40,6 @@ export interface UseWebRTCViewerResult {
 	handleMouseLeave: () => void;
 	handleMouseMove: () => void;
 	handleTouchEnd: (e: React.TouchEvent) => void;
-	/** Send a remote input event to the host over the WebRTC DataChannel. */
-	sendInput: (event: RemoteInputEvent) => void;
 	isActive: boolean;
 	isConnecting: boolean;
 	isPending: boolean;
@@ -72,7 +70,6 @@ export function useWebRTCViewer(
 	const volumeRef = useRef<number>(initialVolume);
 	const pcRef = useRef<RTCPeerConnection | null>(null);
 	const wsRef = useRef<WebSocket | null>(null);
-	const inputChannelRef = useRef<RTCDataChannel | null>(null);
 	const connectAttemptRef = useRef(0);
 	const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -126,7 +123,6 @@ export function useWebRTCViewer(
 			const pc = pcRef.current;
 			wsRef.current = null;
 			pcRef.current = null;
-			inputChannelRef.current = null;
 			clearConnectTimeout();
 			closeSocketSafely(ws);
 			closePeerSafely(pc);
@@ -181,13 +177,6 @@ export function useWebRTCViewer(
 					videoRef.current.srcObject = event.streams[0];
 					videoRef.current.muted = volumeRef.current === 0;
 					videoRef.current.volume = volumeRef.current;
-				}
-			};
-
-			// Receive the DataChannel created by the host for remote input.
-			pc.ondatachannel = (ev: RTCDataChannelEvent) => {
-				if (ev.channel.label === INPUT_CHANNEL_LABEL) {
-					inputChannelRef.current = ev.channel;
 				}
 			};
 
@@ -519,13 +508,6 @@ export function useWebRTCViewer(
 	const isConnecting = connectionState === "connecting";
 	const isPending = connectionState === "pending";
 
-	const sendInput = useCallback((event: RemoteInputEvent) => {
-		const ch = inputChannelRef.current;
-		if (ch && ch.readyState === "open") {
-			ch.send(JSON.stringify(event));
-		}
-	}, []);
-
 	return {
 		containerRef,
 		videoRef,
@@ -550,7 +532,6 @@ export function useWebRTCViewer(
 		handleMouseLeave,
 		handleMouseMove,
 		handleTouchEnd,
-		sendInput,
 		isActive,
 		isConnecting,
 		isPending,
