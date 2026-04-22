@@ -11,6 +11,10 @@ export class OriginWhitelistMiddleware implements NestMiddleware {
 	constructor(private readonly configService: ConfigService) {
 		const allowedOrigins = obtainAllowedOrigins(this.configService);
 		this.allowedList = allowedOrigins.map((u) => u.replace(/\/$/, "").toLowerCase());
+		this.logger.debug(
+			`Allowed origins: ${this.allowedList.join(", ") || "None"}`,
+			"OriginWhitelistMiddleware",
+		);
 	}
 
 	use(req: Request, res: Response, next: NextFunction) {
