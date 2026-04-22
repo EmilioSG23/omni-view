@@ -2,10 +2,25 @@
 // Encapsulates WebSocket signaling, RTCPeerConnection, and UI interaction state
 // for a browser device acting as a WebRTC stream viewer.
 
+import {
+	createRemoteInputEventMessage,
+	createRemoteInputSyncRequestMessage,
+	isRemoteInputEventAllowed,
+	parseRemoteInputMessage,
+} from "@/core/remoteInput";
 import { createReceiverPeer, getSignalingUrl } from "@/core/webrtc";
 import { getDeviceId } from "@/utils/device-identity";
-import type { AgentSummary, QualityPreset } from "@omni-view/shared";
-import { SIGNALING } from "@omni-view/shared";
+import type {
+	AgentSummary,
+	QualityPreset,
+	RemoteInputEvent,
+	RemoteInputPermissions,
+} from "@omni-view/shared";
+import {
+	DEFAULT_REMOTE_INPUT_PERMISSIONS,
+	INPUT_CHANNEL_LABEL,
+	SIGNALING,
+} from "@omni-view/shared";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export type ConnectionState =
@@ -29,9 +44,12 @@ export interface UseWebRTCViewerResult {
 	showControls: boolean;
 	pendingPassword: string;
 	viewerQuality: Exclude<QualityPreset, "custom"> | null;
+	remoteInputPermissions: RemoteInputPermissions;
+	inputPermissionsSynced: boolean;
 	setPendingPassword: React.Dispatch<React.SetStateAction<string>>;
 	connect: (password: string) => Promise<void>;
 	disconnect: () => void;
+	sendRemoteInputEvent: (event: RemoteInputEvent) => boolean;
 	togglePause: () => void;
 	toggleMute: () => void;
 	toggleFullscreen: () => void;
@@ -69,6 +87,8 @@ export function useWebRTCViewer(
 	const initialVolume = getInitialVolume();
 	const volumeRef = useRef<number>(initialVolume);
 	const pcRef = useRef<RTCPeerConnection | null>(null);
+	const inputChannelRef = useRef<RTCDataChannel | null>(null);
+	const inputSequenceRef = useRef(0);
 	const wsRef = useRef<WebSocket | null>(null);
 	const connectAttemptRef = useRef(0);
 	const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,6 +101,10 @@ export function useWebRTCViewer(
 	const [viewerQuality, setViewerQualityState] = useState<Exclude<QualityPreset, "custom"> | null>(
 		null,
 	);
+	const [remoteInputPermissions, setRemoteInputPermissions] = useState<RemoteInputPermissions>(
+		DEFAULT_REMOTE_INPUT_PERMISSIONS,
+	);
+	const [inputPermissionsSynced, setInputPermissionsSynced] = useState(false);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [showControls, setShowControls] = useState(false);
 
@@ -123,6 +147,10 @@ export function useWebRTCViewer(
 			const pc = pcRef.current;
 			wsRef.current = null;
 			pcRef.current = null;
+			inputChannelRef.current = null;
+			inputSequenceRef.current = 0;
+			setInputPermissionsSynced(false);
+			setRemoteInputPermissions(DEFAULT_REMOTE_INPUT_PERMISSIONS);
 			clearConnectTimeout();
 			closeSocketSafely(ws);
 			closePeerSafely(pc);
@@ -131,6 +159,32 @@ export function useWebRTCViewer(
 			}
 		},
 		[clearConnectTimeout, closePeerSafely, closeSocketSafely],
+	);
+
+	const sendRemoteInputEvent = useCallback(
+		(event: RemoteInputEvent) => {
+			const channel = inputChannelRef.current;
+			if (
+				!channel ||
+				channel.readyState !== "open" ||
+				!inputPermissionsSynced ||
+				!isRemoteInputEventAllowed(event, remoteInputPermissions)
+			) {
+				return false;
+			}
+
+			inputSequenceRef.current += 1;
+			channel.send(
+				JSON.stringify(
+					createRemoteInputEventMessage(event, {
+						viewerId,
+						sequence: inputSequenceRef.current,
+					}),
+				),
+			);
+			return true;
+		},
+		[inputPermissionsSynced, remoteInputPermissions, viewerId],
 	);
 
 	const connect = useCallback(
@@ -151,6 +205,37 @@ export function useWebRTCViewer(
 				return;
 			}
 			pcRef.current = pc;
+
+			setInputPermissionsSynced(false);
+			const bindInputChannel = (inputChannel: RTCDataChannel) => {
+				inputChannelRef.current = inputChannel;
+				inputChannel.onopen = () => {
+					inputChannel.send(JSON.stringify(createRemoteInputSyncRequestMessage({ viewerId })));
+				};
+				inputChannel.onclose = () => {
+					if (inputChannelRef.current === inputChannel) {
+						inputChannelRef.current = null;
+						setInputPermissionsSynced(false);
+					}
+				};
+				inputChannel.onerror = () => {
+					if (inputChannelRef.current === inputChannel) {
+						setInputPermissionsSynced(false);
+					}
+				};
+				inputChannel.onmessage = (event) => {
+					if (typeof event.data !== "string") return;
+					const message = parseRemoteInputMessage(event.data);
+					if (message?.type !== "input:permissions") return;
+					setRemoteInputPermissions(message.permissions);
+					setInputPermissionsSynced(true);
+				};
+			};
+
+			pc.ondatachannel = ({ channel }) => {
+				if (channel.label !== INPUT_CHANNEL_LABEL) return;
+				bindInputChannel(channel);
+			};
 
 			const ws = new WebSocket(getSignalingUrl());
 			wsRef.current = ws;
@@ -518,12 +603,15 @@ export function useWebRTCViewer(
 		volume,
 		setVolume,
 		viewerQuality,
+		remoteInputPermissions,
+		inputPermissionsSynced,
 		isFullscreen,
 		showControls,
 		pendingPassword,
 		setPendingPassword,
 		connect,
 		disconnect,
+		sendRemoteInputEvent,
 		togglePause,
 		toggleMute,
 		setViewerQuality,

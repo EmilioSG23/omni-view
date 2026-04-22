@@ -2,16 +2,33 @@
 // Handles signaling WebSocket, peer connections, capture state, and viewer list
 // for a browser device acting as a host agent.
 
+import {
+	createRemoteInputPermissionsMessage,
+	isRemoteInputEventAllowed,
+	parseRemoteInputMessage,
+} from "@/core/remoteInput";
 import { createSenderPeer, getSignalingUrl, sha256hex } from "@/core/webrtc";
 import { agentApi } from "@/services/agent-api";
-import type { CaptureSettings, ViewerInfo } from "@omni-view/shared";
-import { QUALITY_PRESETS, SIGNALING } from "@omni-view/shared";
+import type {
+	CaptureSettings,
+	RemoteInputEvent,
+	RemoteInputPermissions,
+	ViewerInfo,
+} from "@omni-view/shared";
+import {
+	DEFAULT_REMOTE_INPUT_PERMISSIONS,
+	INPUT_CHANNEL_LABEL,
+	QUALITY_PRESETS,
+	SIGNALING,
+} from "@omni-view/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CaptureState = "idle" | "requesting" | "active" | "error";
 
 export interface UseWebRTCHostOptions {
 	onAccessRequested?: (requestId: string, deviceId: string, label?: string) => void;
+	inputPermissions?: RemoteInputPermissions;
+	onRemoteInput?: (viewerId: string, event: RemoteInputEvent) => void;
 }
 
 export interface UseWebRTCHostResult {
@@ -37,6 +54,7 @@ export function useWebRTCHost(
 
 	const streamRef = useRef<MediaStream | null>(null);
 	const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+	const inputChannelsRef = useRef<Map<string, RTCDataChannel>>(new Map());
 	const wsRef = useRef<WebSocket | null>(null);
 
 	// Stable refs so the effect closure always sees the latest values.
@@ -46,14 +64,99 @@ export function useWebRTCHost(
 	const onAccessRequestedRef = useRef(options?.onAccessRequested);
 	onAccessRequestedRef.current = options?.onAccessRequested;
 
+	const inputPermissionsRef = useRef(options?.inputPermissions ?? DEFAULT_REMOTE_INPUT_PERMISSIONS);
+	inputPermissionsRef.current = options?.inputPermissions ?? DEFAULT_REMOTE_INPUT_PERMISSIONS;
+
+	const onRemoteInputRef = useRef(options?.onRemoteInput);
+	onRemoteInputRef.current = options?.onRemoteInput;
+
+	const sendPermissionsToViewer = useCallback((viewerId: string, channel?: RTCDataChannel) => {
+		const targetChannel = channel ?? inputChannelsRef.current.get(viewerId);
+		if (!targetChannel || targetChannel.readyState !== "open") {
+			return;
+		}
+
+		targetChannel.send(
+			JSON.stringify(
+				createRemoteInputPermissionsMessage(inputPermissionsRef.current, { viewerId }),
+			),
+		);
+	}, []);
+
+	const broadcastPermissions = useCallback(() => {
+		for (const [viewerId, channel] of inputChannelsRef.current.entries()) {
+			sendPermissionsToViewer(viewerId, channel);
+		}
+	}, [sendPermissionsToViewer]);
+
+	const applyMediaPermissions = useCallback((permissions: RemoteInputPermissions) => {
+		const stream = streamRef.current;
+		if (!stream) return;
+		for (const track of stream.getVideoTracks()) {
+			track.enabled = permissions.video;
+		}
+		for (const track of stream.getAudioTracks()) {
+			track.enabled = permissions.audio;
+		}
+	}, []);
+
+	const attachInputChannel = useCallback(
+		(viewerId: string, channel: RTCDataChannel) => {
+			inputChannelsRef.current.set(viewerId, channel);
+
+			channel.onopen = () => {
+				sendPermissionsToViewer(viewerId, channel);
+			};
+			channel.onclose = () => {
+				if (inputChannelsRef.current.get(viewerId) === channel) {
+					inputChannelsRef.current.delete(viewerId);
+				}
+			};
+			channel.onerror = () => {
+				if (inputChannelsRef.current.get(viewerId) === channel) {
+					inputChannelsRef.current.delete(viewerId);
+				}
+			};
+			channel.onmessage = (event) => {
+				if (typeof event.data !== "string") return;
+				const message = parseRemoteInputMessage(event.data);
+				if (!message) return;
+
+				if (message.type === "input:sync-request") {
+					sendPermissionsToViewer(viewerId, channel);
+					return;
+				}
+
+				if (
+					message.type === "input:event" &&
+					isRemoteInputEventAllowed(message.event, inputPermissionsRef.current)
+				) {
+					onRemoteInputRef.current?.(viewerId, message.event);
+				}
+			};
+
+			if (channel.readyState === "open") {
+				sendPermissionsToViewer(viewerId, channel);
+			}
+		},
+		[sendPermissionsToViewer],
+	);
+
 	const stopCapture = useCallback(() => {
 		streamRef.current?.getTracks().forEach((t) => t.stop());
 		streamRef.current = null;
+		for (const channel of inputChannelsRef.current.values()) channel.close();
+		inputChannelsRef.current.clear();
 		for (const pc of peersRef.current.values()) pc.close();
 		peersRef.current.clear();
 		setViewers([]);
 		setCaptureState("idle");
 	}, []);
+
+	useEffect(() => {
+		applyMediaPermissions(inputPermissionsRef.current);
+		broadcastPermissions();
+	}, [applyMediaPermissions, broadcastPermissions, options?.inputPermissions]);
 
 	// Always-on signaling connection. Reconnects automatically on unexpected close.
 	useEffect(() => {
@@ -95,6 +198,14 @@ export function useWebRTCHost(
 
 					const pc = await createSenderPeer(stream);
 					peersRef.current.set(viewerId, pc);
+					const inputChannel = pc.createDataChannel(INPUT_CHANNEL_LABEL, {
+						ordered: true,
+					});
+					attachInputChannel(viewerId, inputChannel);
+					pc.ondatachannel = ({ channel }) => {
+						if (channel.label !== INPUT_CHANNEL_LABEL) return;
+						attachInputChannel(viewerId, channel);
+					};
 					setViewers((prev) => [
 						...prev,
 						{ viewer_id: viewerId, label, connected_at: connectedAt },
@@ -147,6 +258,8 @@ export function useWebRTCHost(
 
 				if (msgEvent === SIGNALING.VIEWER_LEFT) {
 					const viewerId = msg.viewerId as string;
+					inputChannelsRef.current.get(viewerId)?.close();
+					inputChannelsRef.current.delete(viewerId);
 					peersRef.current.get(viewerId)?.close();
 					peersRef.current.delete(viewerId);
 					setViewers((prev) => prev.filter((v) => v.viewer_id !== viewerId));
@@ -205,16 +318,17 @@ export function useWebRTCHost(
 			try {
 				const stream = await navigator.mediaDevices.getDisplayMedia({
 					video: { frameRate: { ideal: fps, max: fps * 2 } },
-					audio: settings?.audio ?? false,
+					audio: settings?.audio && inputPermissionsRef.current.audio,
 				});
 				streamRef.current = stream;
+				applyMediaPermissions(inputPermissionsRef.current);
 				stream.getVideoTracks()[0]?.addEventListener("ended", () => stopCapture());
 				setCaptureState("active");
 			} catch {
 				setCaptureState("error");
 			}
 		},
-		[captureState, stopCapture],
+		[applyMediaPermissions, captureState, stopCapture],
 	);
 
 	const kickViewer = useCallback(
