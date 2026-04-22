@@ -1,7 +1,6 @@
 export * from "./access";
 export * from "./agent";
 export * from "./capture";
-export * from "./input";
 export * from "./list";
 export * from "./message";
 export * from "./quality";

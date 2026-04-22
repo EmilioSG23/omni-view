@@ -6,5 +6,6 @@
 export * from "./consts";
 export * from "./events";
 export * from "./infra";
+export * from "./inputs";
 export * from "./logic";
 export * from "./types";
