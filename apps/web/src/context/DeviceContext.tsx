@@ -1,11 +1,21 @@
-import { BROWSER_AGENT_VERSION, PASSWORD_STORAGE_KEY } from "@/consts";
+import {
+	BROWSER_AGENT_VERSION,
+	INPUT_PERMISSIONS_STORAGE_KEY,
+	PASSWORD_STORAGE_KEY,
+} from "@/consts";
 import { sha256hex } from "@/core/webrtc";
 import { useCaptureSettings } from "@/hooks/useCaptureSettings";
 import { useNotifications } from "@/hooks/useNotifications";
 import { type CaptureState, useWebRTCHost } from "@/hooks/viewer/useWebRTCHost";
 import { agentApi } from "@/services/agent-api";
 import { getDeviceId } from "@/utils/device-identity";
-import type { CaptureSettings } from "@omni-view/shared";
+import {
+	type CaptureSettings,
+	DEFAULT_REMOTE_INPUT_PERMISSIONS,
+	type RemoteInputEvent,
+	type RemoteInputFeature,
+	type RemoteInputPermissions,
+} from "@omni-view/shared";
 import {
 	createContext,
 	type ReactNode,
@@ -19,6 +29,19 @@ import {
 export type { CaptureState } from "@/hooks/viewer/useWebRTCHost";
 
 import type { ViewerInfo } from "@omni-view/shared";
+
+function loadInputPermissions(): RemoteInputPermissions {
+	try {
+		const raw = localStorage.getItem(INPUT_PERMISSIONS_STORAGE_KEY);
+		if (!raw) return DEFAULT_REMOTE_INPUT_PERMISSIONS;
+		return {
+			...DEFAULT_REMOTE_INPUT_PERMISSIONS,
+			...(JSON.parse(raw) as Partial<RemoteInputPermissions>),
+		};
+	} catch {
+		return DEFAULT_REMOTE_INPUT_PERMISSIONS;
+	}
+}
 
 export interface DeviceContextType {
 	/** This browser device's stable agent ID. */
@@ -51,6 +74,16 @@ export interface DeviceContextType {
 	denyAccess: (requestId: string, blacklist?: boolean) => void;
 	/** Increments whenever the whitelist/blacklist changes so panels can reload. */
 	whitelistVersion: number;
+	/** Host-side input/media permissions broadcast to viewers over the control channel. */
+	inputPermissions: RemoteInputPermissions;
+	/** Whether all host-side permissions are enabled. */
+	allInputsEnabled: boolean;
+	/** Toggle a single host-side permission. */
+	toggleInputFeature: (feature: RemoteInputFeature) => void;
+	/** Enable all permissions or restore the previous mix when all are already enabled. */
+	toggleAllInputs: () => void;
+	/** Most recent remote input event received from a connected viewer. */
+	lastRemoteInput: { viewerId: string; event: RemoteInputEvent; receivedAt: number } | null;
 }
 
 const DeviceContext = createContext<DeviceContextType | null>(null);
@@ -62,6 +95,14 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 	const [password, setPassword] = useState<string>(
 		() => localStorage.getItem(PASSWORD_STORAGE_KEY) ?? "",
 	);
+	const [inputPermissions, setInputPermissions] =
+		useState<RemoteInputPermissions>(loadInputPermissions);
+	const [lastRemoteInput, setLastRemoteInput] = useState<{
+		viewerId: string;
+		event: RemoteInputEvent;
+		receivedAt: number;
+	} | null>(null);
+	const previousAllEnabledPermissionsRef = useRef<RemoteInputPermissions | null>(null);
 
 	const { addNotification, removeNotification } = useNotifications();
 
@@ -120,7 +161,44 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 		grantAccess,
 		denyAccess,
 		updatePassword,
-	} = useWebRTCHost(agentId, password, { onAccessRequested: handleAccessRequested });
+	} = useWebRTCHost(agentId, password, {
+		onAccessRequested: handleAccessRequested,
+		inputPermissions,
+		onRemoteInput: (viewerId, event) => {
+			setLastRemoteInput({ viewerId, event, receivedAt: Date.now() });
+		},
+	});
+
+	useEffect(() => {
+		try {
+			localStorage.setItem(INPUT_PERMISSIONS_STORAGE_KEY, JSON.stringify(inputPermissions));
+		} catch {}
+	}, [inputPermissions]);
+
+	const toggleInputFeature = useCallback((feature: RemoteInputFeature) => {
+		setInputPermissions((current) => ({
+			...current,
+			[feature]: !current[feature],
+		}));
+	}, []);
+
+	const toggleAllInputs = useCallback(() => {
+		setInputPermissions((current) => {
+			const allEnabled = Object.values(current).every(Boolean);
+			if (allEnabled) {
+				return previousAllEnabledPermissionsRef.current ?? current;
+			}
+			previousAllEnabledPermissionsRef.current = current;
+			return {
+				keyboard: true,
+				mouse: true,
+				audio: true,
+				video: true,
+			};
+		});
+	}, []);
+
+	const allInputsEnabled = Object.values(inputPermissions).every(Boolean);
 
 	const startCapture = useCallback(async () => {
 		await hostStartCapture(captureSettings);
@@ -191,6 +269,11 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 				grantAccess,
 				denyAccess,
 				whitelistVersion,
+				inputPermissions,
+				allInputsEnabled,
+				toggleInputFeature,
+				toggleAllInputs,
+				lastRemoteInput,
 			}}
 		>
 			{children}

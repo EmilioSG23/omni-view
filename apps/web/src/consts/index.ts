@@ -7,6 +7,9 @@ export const DEVICE_ID_STORAGE_KEY = "omniview:device_id";
 /** localStorage key for the persisted agent session password. */
 export const PASSWORD_STORAGE_KEY = "omniview:agent_password";
 
+/** localStorage key for persisted host-side remote input permissions. */
+export const INPUT_PERMISSIONS_STORAGE_KEY = "omniview:inputPermissions";
+
 /** URL of the GitHub repository for the project. */
 export const GIT_REPO_URL = "https://github.com/EmilioSG23/omni-view";
 
