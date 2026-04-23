@@ -40,8 +40,8 @@ export interface RemoteInputPermissions {
 }
 
 export const DEFAULT_REMOTE_INPUT_PERMISSIONS: RemoteInputPermissions = {
-	keyboard: true,
-	mouse: true,
+	keyboard: false,
+	mouse: false,
 	audio: true,
 	video: true,
 };

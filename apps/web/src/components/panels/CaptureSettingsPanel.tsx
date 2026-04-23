@@ -1,7 +1,13 @@
 // ─── Capture settings panel ───────────────────────────────────────────────────
 // Modal content for configuring screen-capture quality preset and audio.
 
-import type { CaptureSettings, QualityPreset } from "@omni-view/shared";
+import { controlCards } from "@/consts/inputs-control";
+import type {
+	CaptureSettings,
+	QualityPreset,
+	RemoteInputFeature,
+	RemoteInputPermissions,
+} from "@omni-view/shared";
 import { QUALITY_PRESETS } from "@omni-view/shared";
 import { useState } from "react";
 
@@ -25,24 +31,33 @@ const PRESET_LABELS: Record<NonCustomPreset, { label: string; desc: string }> = 
 interface CaptureSettingsPanelProps {
 	settings: CaptureSettings;
 	onSave: (settings: CaptureSettings) => void;
-	onClose: () => void;
+	inputPermissions: RemoteInputPermissions;
+	allInputsEnabled: boolean;
+	toggleInputFeature: (feature: RemoteInputFeature) => void;
+	toggleAllInputs: () => void;
 }
 
-export function CaptureSettingsPanel({ settings, onSave, onClose }: CaptureSettingsPanelProps) {
+export function CaptureSettingsPanel({
+	settings,
+	onSave,
+	inputPermissions,
+	allInputsEnabled,
+	toggleInputFeature,
+	toggleAllInputs,
+}: CaptureSettingsPanelProps) {
 	const [local, setLocal] = useState<CaptureSettings>(settings);
 	const presets = Object.keys(QUALITY_PRESETS) as NonCustomPreset[];
 
 	function handlePresetChange(preset: NonCustomPreset) {
-		setLocal((prev) => ({ ...prev, preset, fps: QUALITY_PRESETS[preset].fps }));
-	}
-
-	function handleApply() {
-		onSave(local);
-		onClose();
+		setLocal((prev) => {
+			const next = { ...prev, preset, fps: QUALITY_PRESETS[preset].fps };
+			onSave(next);
+			return next;
+		});
 	}
 
 	return (
-		<div className="flex flex-col gap-5">
+		<div className="flex flex-col gap-3">
 			<h2 className="text-sm font-semibold text-primary">Capture Settings</h2>
 
 			{/* Quality preset */}
@@ -73,54 +88,73 @@ export function CaptureSettingsPanel({ settings, onSave, onClose }: CaptureSetti
 						);
 					})}
 				</div>
+				{/* FPS indicator */}
+				<p className="text-xs text-muted text-center">
+					Target frame rate: <span className="text-primary font-mono">{local.fps} fps</span>
+				</p>
 			</div>
 
-			{/* System audio toggle */}
-			<div className="flex items-center justify-between gap-3">
-				<div className="flex flex-col gap-0.5 min-w-0">
-					<span className="text-xs font-medium text-primary">System Audio</span>
-					<span className="text-xs text-muted">
-						Capture desktop audio (browser support may vary)
-					</span>
+			{/* Input controls */}
+			<div className="flex flex-col gap-2">
+				<div className="w-full flex items-center justify-between">
+					<div className="w-2/3">
+						<span className="text-xs text-muted">Remote inputs</span>
+						<p className="mt-1 text-[10px] text-muted/80">
+							Host policy is pushed live to connected viewers over the control channel.
+						</p>
+					</div>
+					<button
+						type="button"
+						onClick={toggleAllInputs}
+						disabled={
+							!allInputsEnabled &&
+							controlCards
+								.filter(({ available }) => available)
+								.every(({ feature }) => inputPermissions[feature])
+						}
+						className={[
+							"rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50",
+							allInputsEnabled
+								? "border-accent/40 bg-accent/15 text-accent"
+								: "border-border bg-elevated text-primary hover:border-accent/30 hover:text-accent",
+						].join(" ")}
+					>
+						{allInputsEnabled ? "Restore" : "Enable all"}
+					</button>
 				</div>
-				<button
-					type="button"
-					role="switch"
-					aria-checked={local.audio}
-					onClick={() => setLocal((prev) => ({ ...prev, audio: !prev.audio }))}
-					className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-						local.audio ? "bg-accent" : "bg-overlay"
-					}`}
-				>
-					<span
-						className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-							local.audio ? "translate-x-4" : "translate-x-0"
-						}`}
-					/>
-				</button>
-			</div>
 
-			{/* FPS indicator */}
-			<p className="text-xs text-muted text-center">
-				Target frame rate: <span className="text-primary font-mono">{local.fps} fps</span>
-			</p>
+				<div className="flex w-full items-center justify-center gap-2">
+					{controlCards
+						.filter(({ available }) => available)
+						.map(({ feature, title, description, Icon, available }) => {
+							const active = inputPermissions[feature];
+							return (
+								<button
+									key={feature}
+									type="button"
+									onClick={() => toggleInputFeature(feature)}
+									disabled={!available}
+									className={[
+										"group flex min-w-0 flex-col gap-2 rounded-xl border px-3 py-3 text-left transition-all duration-150",
+										active
+											? "border-accent/50 bg-accent/12 text-primary shadow-[0_10px_30px_-18px_rgba(14,165,233,0.9)]"
+											: "border-border/80 bg-base/60 text-muted hover:border-accent/30 hover:text-primary",
+										"disabled:pointer-events-none disabled:opacity-50",
+									].join(" ")}
+									title={`Allow ${title}:\n${description}`}
+								>
+									<Icon className="h-4 w-4" />
+								</button>
+							);
+						})}
+				</div>
 
-			{/* Action buttons */}
-			<div className="flex gap-2 pt-1">
-				<button
-					type="button"
-					onClick={onClose}
-					className="flex-1 py-2 rounded-lg bg-elevated hover:bg-overlay text-sm text-secondary transition-colors border border-border"
-				>
-					Cancel
-				</button>
-				<button
-					type="button"
-					onClick={handleApply}
-					className="flex-1 py-2 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-sm font-semibold transition-colors border border-accent/30"
-				>
-					Apply
-				</button>
+				{!settings.audio && (
+					<p className="text-[11px] leading-4 text-muted/80">
+						Audio can be muted live here, but enabling it during capture still requires audio to be
+						included in capture settings first.
+					</p>
+				)}
 			</div>
 		</div>
 	);

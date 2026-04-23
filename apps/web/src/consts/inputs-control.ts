@@ -10,6 +10,7 @@ export const controlCards: Array<{
 	title: string;
 	description: string;
 	Icon: ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
+	available?: boolean;
 }> = [
 	{
 		feature: "keyboard",
@@ -28,11 +29,13 @@ export const controlCards: Array<{
 		title: "Audio send",
 		description: "Gate outbound audio tracks while capture stays live.",
 		Icon: VolumeIcon,
+		available: true,
 	},
 	{
 		feature: "video",
 		title: "Video send",
 		description: "Gate outbound video tracks without stopping the session.",
 		Icon: CameraIcon,
+		available: true,
 	},
 ];

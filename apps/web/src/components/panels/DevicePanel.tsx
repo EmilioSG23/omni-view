@@ -1,6 +1,5 @@
 import { Modal } from "@/components/Modal";
 import { CaptureSettingsPanel } from "@/components/panels/CaptureSettingsPanel";
-import { controlCards } from "@/consts/inputs-control";
 import type { CaptureState } from "@/context/DeviceContext";
 import { useDevice } from "@/context/DeviceContext";
 import { EyeIcon } from "@/icons/EyeIcon";
@@ -198,9 +197,11 @@ export function DevicePanel() {
 					</button>
 					<button
 						className="p-2 rounded-lg text-xs font-semibold transition-colors
-					bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30"
+					bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30
+					disabled:opacity-50 disabled:cursor-not-allowed"
 						onClick={() => setShowSettings(true)}
 						title="Capture settings"
+						disabled={!canCapture || captureState === "requesting"}
 					>
 						⚙
 					</button>
@@ -230,67 +231,15 @@ export function DevicePanel() {
 				)}
 			</div>
 
-			{/* Input controls */}
-			{canCapture && (
-				<div className="flex flex-col gap-2">
-					<div className="w-full flex items-center justify-between">
-						<div className="w-2/3">
-							<span className="text-xs text-muted">Remote inputs</span>
-							<p className="mt-1 text-[10px] text-muted/80">
-								Host policy is pushed live to connected viewers over the control channel.
-							</p>
-						</div>
-						<button
-							type="button"
-							onClick={toggleAllInputs}
-							className={[
-								"rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-								allInputsEnabled
-									? "border-accent/40 bg-accent/15 text-accent"
-									: "border-border bg-elevated text-primary hover:border-accent/30 hover:text-accent",
-							].join(" ")}
-						>
-							{allInputsEnabled ? "Restore" : "Enable all"}
-						</button>
-					</div>
-
-					<div className="flex w-full items-center justify-center gap-2">
-						{controlCards.map(({ feature, title, description, Icon }) => {
-							const active = inputPermissions[feature];
-							return (
-								<button
-									key={feature}
-									type="button"
-									onClick={() => toggleInputFeature(feature)}
-									className={[
-										"group flex min-w-0 flex-col gap-2 rounded-xl border px-3 py-3 text-left transition-all duration-150",
-										active
-											? "border-accent/50 bg-accent/12 text-primary shadow-[0_10px_30px_-18px_rgba(14,165,233,0.9)]"
-											: "border-border/80 bg-base/60 text-muted hover:border-accent/30 hover:text-primary",
-									].join(" ")}
-									title={`Allow ${title}:\n${description}`}
-								>
-									<Icon className="h-4 w-4" />
-								</button>
-							);
-						})}
-					</div>
-
-					{!captureSettings.audio && (
-						<p className="text-[11px] leading-4 text-muted/80">
-							Audio can be muted live here, but enabling it during capture still requires audio to
-							be included in capture settings first.
-						</p>
-					)}
-				</div>
-			)}
-
 			{showSettings && (
 				<Modal onClose={() => setShowSettings(false)} width="22rem">
 					<CaptureSettingsPanel
 						settings={captureSettings}
 						onSave={saveCaptureSettings}
-						onClose={() => setShowSettings(false)}
+						inputPermissions={inputPermissions}
+						allInputsEnabled={allInputsEnabled}
+						toggleInputFeature={toggleInputFeature}
+						toggleAllInputs={toggleAllInputs}
 					/>
 				</Modal>
 			)}
